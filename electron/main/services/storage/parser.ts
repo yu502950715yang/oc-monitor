@@ -58,6 +58,7 @@ export interface PlanItem {
 // SQLite database instance
 let db: Database | null = null;
 let sqlJsInitialized = false;
+let lastDbFileMtime: number = 0;
 
 // ==================== 路径获取函数 ====================
 
@@ -434,6 +435,76 @@ export function checkStorageExists(): boolean {
 
 export async function checkDbInitialized(): Promise<boolean> {
   return await initSqlite();
+}
+
+// 检查并重新加载数据库（如果文件有变化）
+export async function reloadDbIfChanged(): Promise<boolean> {
+  const dbPath = getDbPath();
+  
+  if (!existsSync(dbPath)) {
+    return false;
+  }
+  
+  try {
+    const stats = statSync(dbPath);
+    const currentMtime = stats.mtimeMs;
+    
+    // 如果文件修改时间变了，重新加载数据库
+    if (currentMtime !== lastDbFileMtime) {
+      log.info(`[storage] Database file changed, reloading...`);
+      
+      // 关闭旧连接
+      if (db) {
+        db.close();
+        db = null;
+      }
+      
+      // 重新初始化
+      const SQL = await initSqlJs();
+      const fileBuffer = readFileSync(dbPath);
+      db = new SQL.Database(fileBuffer);
+      lastDbFileMtime = currentMtime;
+      
+      log.info(`[storage] Database reloaded successfully`);
+      return true;
+    }
+    
+    return false;
+  } catch (error) {
+    log.warn(`[storage] Failed to reload database:`, error);
+    return false;
+  }
+}
+
+// 强制重新加载数据库
+export async function forceReloadDb(): Promise<boolean> {
+  const dbPath = getDbPath();
+  
+  if (!existsSync(dbPath)) {
+    log.warn(`[storage] Database file not found: ${dbPath}`);
+    return false;
+  }
+  
+  try {
+    log.info(`[storage] Force reloading database...`);
+    
+    // 关闭旧连接
+    if (db) {
+      db.close();
+      db = null;
+    }
+    
+    sqlJsInitialized = false;
+    
+    // 重新初始化
+    await initSqlite();
+    
+    log.info(`[storage] Database force reloaded successfully`);
+    return true;
+  } catch (error) {
+    log.error(`[storage] Failed to force reload database:`, error);
+    return false;
+  }
 }
 
 // ==================== 公开 API ====================

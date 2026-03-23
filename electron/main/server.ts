@@ -3,7 +3,7 @@ import { cors } from "hono/cors";
 import { serve } from "@hono/node-server";
 import { registerRoutes } from "./routes";
 import { getGlobalWatcher, closeGlobalWatcher } from "./services/watcher";
-import { closeDb } from "./services/storage/parser";
+import { closeDb, forceReloadDb } from "./services/storage/parser";
 import log from "electron-log";
 import { cwd } from "node:process";
 import { config } from "./config";
@@ -68,9 +68,16 @@ export function startServer(): void {
     debounceMs: config.watcher.debounceDelay,
   });
 
-  watcher.on("change", (event) => {
+  watcher.on("change", async (event) => {
     log.debug(`[server] File change detected: ${event.type} - ${event.filename}`);
-    // Could emit SSE event here if needed
+    
+    // 检测到数据库文件或存储目录变化时，重新加载数据库
+    if (event.filename === 'opencode.db' || 
+        event.path.includes('/storage/') || 
+        event.path.includes('\\storage\\')) {
+      log.info(`[server] Storage changed, reloading database...`);
+      await forceReloadDb();
+    }
   });
 
   watcher.on("error", (error) => {
