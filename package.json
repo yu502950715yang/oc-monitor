@@ -1,0 +1,87 @@
+{
+  "name": "oc-monitor",
+  "version": "0.1.0",
+  "description": "OC 监控助手 - 实时监控 OpenCode 智能体活动",
+  "author": "OC Monitor Team",
+  "main": "dist-electron/main/index.js",
+  "scripts": {
+    "dev": "vite",
+    "dev:electron": "concurrently \"vite\" \"npm run electron:dev\"",
+    "electron:dev": "tsc -p electron/tsconfig.json && electron .",
+    "build": "tsc -p electron/tsconfig.json && vite build",
+    "build:win": "npm run build && electron-builder --win",
+    "build:mac": "npm run build && electron-builder --mac",
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.19.11",
+    "@xyflow/react": "^12.10.1",
+    "chokidar": "^4.0.3",
+    "electron-log": "^5.3.4",
+    "hono": "^4.12.5",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "sql.js": "^1.12.0",
+    "zod": "~4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "autoprefixer": "^10.4.24",
+    "concurrently": "^9.1.2",
+    "electron": "^33.4.0",
+    "electron-builder": "^25.1.8",
+    "postcss": "^8.5.6",
+    "tailwindcss": "3.4.17",
+    "typescript": "~5.9.3",
+    "vite": "^7.2.4"
+  },
+  "build": {
+    "appId": "com.ocmonitor.app",
+    "productName": "OCMonitor",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ],
+    "asar": false,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "mac": {
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        }
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  }
+}

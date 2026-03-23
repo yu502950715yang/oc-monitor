@@ -1,295 +1,297 @@
-# OpenCode 事件监控系统 - 使用文档
+# OC 监控助手
 
-## 概述
+> 实时监控 OpenCode 智能体活动的桌面应用程序
 
-OpenCode 事件监控系统是一个用于实时监控 OpenCode 运行过程中所有事件的轻量级监控系统。系统包含：
+简体中文 | [English](./README_en.md)
 
-- **后端 API**：FastAPI + SQLite，提供事件存储、查询、统计功能
-- **前端界面**：Vue 3 + Naive UI，中文界面展示
-- **OpenCode 插件**：监听并上报事件到监控系统
+## 项目简介
 
----
+OC 监控助手是一个基于 Electron 开发的桌面应用程序，用于实时监控 [OpenCode](https://opencode.com) 智能体的工作状态。通过简洁的中文界面，用户可以直观地查看智能体的会话、活动流和计划进度。
+
+本项目是 [OCWatch](https://github.com/ocm-ai/ocwatch) 的桌面版封装，保留了核心监控功能，同时提供了更易于部署的桌面应用体验。
+
+## 功能特性
+
+### 核心功能
+
+- 📋 **会话列表** - 显示当前和历史的 OpenCode 会话
+- 🔄 **实时活动流** - 实时展示智能体的工具调用、操作和消息
+- 📊 **计划进度** - 显示当前计划的任务完成状态
+- 🌳 **活动树可视化** - 图形化展示智能体会话的父子层级关系
+
+### 用户体验
+
+- 🇨🇳 **全中文界面** - 专为中文用户设计
+- 🌙 **深色主题** - 护眼设计，专注数据显示
+- ⚡ **轻量快速** - Electron + Vite 高性能架构
+- 🔒 **安全可靠** - 仅读取数据，不修改任何文件
+
+## 技术栈
+
+| 层级 | 技术选择 |
+|------|----------|
+| 桌面框架 | Electron 33+ |
+| 后端服务 | Node.js + Hono (嵌入式) |
+| 前端框架 | React 19 + Vite |
+| UI 样式 | Tailwind CSS |
+| 可视化 | @xyflow/react |
+| 文件监控 | chokidar |
+| 打包工具 | electron-builder |
+
+## 系统要求
+
+- **操作系统**: Windows 10/11 (x64) 或 macOS 10.15+
+- **内存**: 至少 4GB RAM
+- **硬盘**: 至少 500MB 可用空间
 
 ## 快速开始
 
-### 方式一：Docker 部署（推荐）
+### 方式一：直接运行（推荐）
+
+下载或克隆项目后：
 
 ```bash
-# 1. 克隆或下载项目后，进入目录
-cd oc-monitor
+# 进入项目目录
+cd E:\code\oc-monitor
 
-# 2. 启动 Docker Desktop（Windows）或确保 Docker 运行（Linux/Mac）
-
-# 3. 一键启动
-docker-compose up -d
-
-# 4. 访问系统
-# 后端 API: http://localhost:8000
-# 前端界面: http://localhost:3000
-# API 文档: http://localhost:8000/docs
-```
-
-### 方式二：本地开发运行
-
-#### 1. 启动后端
-
-```bash
-# 进入后端目录
-cd backend
-
-# 创建虚拟环境（可选）
-python -m venv venv
-# Windows: venv\Scripts\activate
-# Linux/Mac: source venv/bin/activate
-
-# 安装依赖
-pip install -r requirements.txt
-
-# 启动服务
-python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 7000
-```
-
-后端启动后：
-- API 地址：http://localhost:8000
-- 健康检查：http://localhost:8000/health
-- API 文档：http://localhost:8000/docs
-
-#### 2. 启动前端
-
-```bash
-# 进入前端目录
-cd frontend
-
-# 安装依赖
-npm install
-
-# 启动开发服务器
+# 运行开发模式
 npm run dev
 ```
 
-前端启动后访问：http://localhost:5173
-
----
-
-## 系统功能
-
-### 1. 事件监控
-
-系统监控以下类型的 OpenCode 事件：
-
-| 事件类型 | 说明 |
-|---------|------|
-| session.idle | 会话完成 |
-| session.created | 新会话创建 |
-| session.error | 会话错误 |
-| message.updated | 消息更新 |
-| tool.execute.after | 工具执行完成 |
-| command.executed | 命令执行 |
-| file.edited | 文件编辑 |
-| permission.asked | 权限请求 |
-| tui.toast.show | 系统通知 |
-
-### 2. 界面说明
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│  OpenCode 事件监控系统                    [连接状态]  🔴/🟢  │
-├──────────────────────┬──────────────────────────────────────┤
-│  📊 数据统计          │  📋 事件列表                          │
-│                      │                                       │
-│  总事件数: 156       │  会话ID     类型       时间           │
-│  会话数: 23          │  ───────────────────────────────     │
-│  活跃会话: 2         │  sess_001   message    10:30:45      │
-│                      │  sess_001   tool        10:30:42      │
-│  ─────────────────   │  sess_002   session     10:29:30      │
-│                      │                                       │
-│  📈 事件类型分布      │  [点击会话查看详情]                   │
-│  message  ████ 45%   │                                       │
-│  tool     ███   30%  │                                       │
-│  session  ██    20%  │                                       │
-│  other    █      5%  │                                       │
-└──────────────────────┴──────────────────────────────────────┘
-```
-
-- **左侧**：统计面板，显示总事件数、会话数、事件类型分布
-- **右侧**：事件列表，按会话分组，点击可展开查看详情
-
-### 3. API 接口
-
-| 接口 | 方法 | 说明 |
-|------|------|------|
-| `/health` | GET | 健康检查 |
-| `/api/v1/events` | POST | 上报事件 |
-| `/api/v1/events` | GET | 获取事件列表 |
-| `/api/v1/sessions` | GET | 获取会话列表 |
-| `/api/v1/sessions/{id}/events` | GET | 获取会话事件 |
-| `/api/v1/statistics` | GET | 获取统计信息 |
-| `/ws/events` | WebSocket | 实时事件推送 |
-
----
-
-## OpenCode 插件配置
-
-### 安装插件
-
-将 `plugins/monitor` 目录复制到 OpenCode 插件目录：
+### 方式二：运行打包后的应用
 
 ```bash
-# 全局插件
-cp -r plugins/monitor ~/.config/opencode/plugins/
-
-# 或项目级插件
-cp -r plugins/monitor .opencode/plugins/
+# Windows
+release\win-unpacked\OCMonitor.exe
 ```
 
-### 配置环境变量
-
-在 OpenCode 配置文件中设置：
-
-```json
-{
-  "plugins": ["monitor"],
-  "env": {
-    "MONITOR_ENDPOINT": "http://localhost:8000/api/v1/events"
-  }
-}
-```
-
-### 插件配置项
-
-| 环境变量 | 默认值 | 说明 |
-|---------|--------|------|
-| `MONITOR_ENDPOINT` | `http://localhost:8000/api/v1/events` | 监控服务端点 |
-| `MONITOR_BUFFER_MAX_SIZE` | `10` | 最大缓冲事件数 |
-| `MONITOR_BUFFER_FLUSH_INTERVAL` | `3000` | 刷新间隔（毫秒） |
-| `MONITOR_BUFFER_MAX_RETRIES` | `3` | 最大重试次数 |
-| `MONITOR_VERBOSE` | `false` | 是否输出详细日志 |
-
----
-
-## 测试 API
-
-### 健康检查
+### 方式三：构建安装包
 
 ```bash
-curl http://localhost:8000/health
-# 返回: {"status":"ok","message":"OpenCode Monitor API"}
+# 安装依赖
+npm install
+
+# 构建 Windows 安装包
+npm run build:win
+
+# 构建 macOS 安装包（需要在 macOS 上运行）
+npm run build:mac
 ```
 
-### 上报测试事件
-
-```bash
-curl -X POST http://localhost:8000/api/v1/events \
-  -H "Content-Type: application/json" \
-  -d '{
-    "event_type": "session.idle",
-    "session_id": "test-session-001",
-    "event_category": "session",
-    "data": {
-      "duration_ms": 5000,
-      "message_count": 10
-    }
-  }'
-```
-
-### 查询统计
-
-```bash
-curl http://localhost:8000/api/v1/statistics
-```
-
-### 查询会话
-
-```bash
-# 获取所有会话
-curl http://localhost:8000/api/v1/sessions
-
-# 获取指定会话的事件
-curl http://localhost:8000/api/v1/sessions/test-session-001/events
-```
-
----
-
-## 常见问题
-
-### Q: 前端无法连接后端
-
-**解决方法**：
-1. 确认后端服务已启动（端口 8000）
-2. 检查前端配置中的 API 地址
-3. 如果使用 Docker，确保端口映射正确
-
-### Q: 插件无法上报事件
-
-**解决方法**：
-1. 确认 `MONITOR_ENDPOINT` 环境变量设置正确
-2. 检查后端服务是否正常运行
-3. 查看浏览器控制台或终端的错误日志
-
-### Q: Docker 构建失败
-
-**解决方法**：
-1. 确保 Docker Desktop 已启动
-2. 确保有足够的磁盘空间
-3. Windows 下可能需要启用 WSL2
-
-### Q: 如何清除历史数据
-
-直接删除 SQLite 数据库文件：
-
-```bash
-# 后端运行时会自动创建 data/ 目录
-rm -rf data/events.db
-```
-
----
+构建完成后，安装包会生成在 `release` 目录下。
 
 ## 项目结构
 
 ```
 oc-monitor/
-├── backend/                 # FastAPI 后端
-│   ├── app/
-│   │   ├── api/            # API 路由
-│   │   ├── models/         # Pydantic 模型
-│   │   ├── storage/        # SQLite 存储
-│   │   ├── main.py         # 应用入口
-│   │   └── config.py       # 配置
-│   └── requirements.txt    # Python 依赖
-│
-├── frontend/               # Vue 3 前端
-│   ├── src/
-│   │   ├── components/     # Vue 组件
-│   │   ├── stores/         # Pinia 状态
-│   │   ├── services/       # API 客户端
-│   │   └── types/          # TypeScript 类型
-│   └── package.json        # npm 依赖
-│
-├── plugins/monitor/        # OpenCode 插件
-│   ├── index.ts            # 插件入口
-│   ├── types.ts            # 类型定义
-│   └── buffer.ts           # 缓冲逻辑
-│
-├── docker-compose.yml      # Docker 编排
-├── Dockerfile.backend      # 后端镜像
-└── Dockerfile.frontend     # 前端镜像
+├── electron/                 # Electron 主进程代码
+│   ├── main/
+│   │   ├── index.ts         # 应用入口
+│   │   ├── server.ts        # Hono HTTP 服务器
+│   │   ├── routes/          # API 路由
+│   │   └── services/        # 后端服务
+│   │       ├── storage/     # OpenCode 存储解析器
+│   │       └── watcher.ts   # 文件监控服务
+│   └── preload/             # 预加载脚本
+├── src/renderer/            # React 前端代码
+│   └── src/
+│       ├── components/      # UI 组件
+│       ├── hooks/           # React Hooks
+│       ├── context/         # 状态管理
+│       └── App.tsx          # 主应用组件
+├── package.json
+├── vite.config.ts
+└── tailwind.config.js
 ```
 
----
+## 数据来源
 
-## 技术栈
+应用会读取 OpenCode 的本地存储目录来获取监控数据：
 
-| 层级 | 技术 |
-|------|------|
-| 后端 | FastAPI + Python 3.11+ |
-| 数据库 | SQLite |
-| 前端 | Vue 3 + TypeScript + Naive UI |
-| 状态管理 | Pinia |
-| 实时通信 | WebSocket |
-| 部署 | Docker + Docker Compose |
+- **Windows**: `C:\Users\<用户名>\.local\share\opencode\storage\`
+- **macOS**: `~/.local/share/opencode/storage/`
 
----
+存储目录包含以下内容：
+
+| 目录/文件 | 说明 |
+|-----------|------|
+| `session/*.json` | 会话元数据 |
+| `message/*.json` | 消息内容 |
+| `part/*.json` | 工具调用和部件 |
+| `.sisyphus/boulder.json` | 计划进度数据 |
+
+## 常见问题
+
+### Q: 为什么显示"暂无会话"？
+
+请确保：
+1. OpenCode 正在运行或曾经运行过
+2. OpenCode 存储目录存在且包含数据
+3. 数据路径正确（见上文"数据来源"）
+
+### Q: 活动流不实时更新？
+
+应用使用 3 秒轮询机制更新数据。如果需要更实时的更新，可以修改 `src/renderer/src/hooks/usePolling.ts` 中的轮询间隔。
+
+### Q: 如何查看日志？
+
+日志文件位置：
+- **Windows**: `%APPDATA%\OCMonitor\logs\`
+- **macOS**: `~/Library/Logs/OCMonitor/`
+
+### Q: 可以自定义监控路径吗？
+
+可以！所有配置都在 `electron/main/config.ts` 文件中，详见下文"配置文件说明"。
+
+## 配置文件说明
+
+所有可配置的选项都在 `electron/main/config.ts` 文件中：
+
+```typescript
+export const config = {
+  // ====================
+  // 应用配置
+  // ====================
+  app: {
+    name: 'OC 监控助手',      // 应用名称（窗口标题）
+    version: '0.1.0',         // 应用版本
+  },
+
+  // ====================
+  // 服务器配置
+  // ====================
+  server: {
+    port: 50234,              // HTTP 服务器端口
+    host: 'localhost',        // 服务器主机地址
+  },
+
+  // ====================
+  // OpenCode 存储配置
+  // ====================
+  storage: {
+    rootPath: '',             // OpenCode 存储根目录（空=自动检测）
+    sessionDir: 'session',    // 会话目录名称
+    messageDir: 'message',    // 消息目录名称
+    partDir: 'part',          // 部件目录名称
+  },
+
+  // ====================
+  // 文件监控配置
+  // ====================
+  watcher: {
+    debounceDelay: 100,       // 文件变化防抖延迟（毫秒）
+    ignoreInitial: true,      // 是否忽略初始扫描
+  },
+
+  // ====================
+  // 前端轮询配置
+  // ====================
+  polling: {
+    interval: 3000,           // 数据轮询间隔（毫秒）
+  },
+
+  // ====================
+  // 窗口配置
+  // ====================
+  window: {
+    width: 1200,              // 默认窗口宽度
+    height: 800,              // 默认窗口高度
+    maximizable: true,        // 是否允许窗口最大化
+    minimizable: true,        // 是否允许窗口最小化
+    closable: true,           // 是否允许窗口关闭
+  },
+
+  // ====================
+  // 日志配置
+  // ====================
+  log: {
+    level: 'info',            // 日志级别: info, warn, error, debug
+    maxSize: 10 * 1024 * 1024, // 日志文件最大大小（字节）
+  },
+}
+```
+
+### 常用配置修改示例
+
+#### 1. 修改服务器端口
+
+```typescript
+server: {
+  port: 8080,  // 改为 8080 端口
+},
+```
+
+#### 2. 修改数据轮询间隔
+
+```typescript
+polling: {
+  interval: 5000,  // 改为 5 秒
+},
+```
+
+#### 3. 修改窗口默认大小
+
+```typescript
+window: {
+  width: 1400,
+  height: 900,
+},
+```
+
+#### 4. 修改日志级别
+
+```typescript
+log: {
+  level: 'debug',  // 改为 debug 级别，可查看更多调试信息
+},
+```
+
+修改配置后，重新运行 `npm run build` 即可生效。
+
+## 界面预览
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  OC 监控助手                              版本: 0.1.0       │
+├─────────────────────────────────────────────────────────────┤
+│  会话列表                    │  活动流                      │
+│  ┌──────────────────┐       │  ┌────────────────────────┐  │
+│  │ 会话 1 - 运行中  │       │  │ [10:30] 工具调用: Read │  │
+│  │ 会话 2 - 已完成  │       │  │ [10:29] 工具调用: Bash │  │
+│  │ 会话 3 - 已完成  │       │  │ [10:28] 消息: 用户回复  │  │
+│  └──────────────────┘       │  └────────────────────────┘  │
+│                              │                               │
+│  计划进度                    │  活动树                      │
+│  ┌──────────────────┐       │  ┌────────────────────────┐  │
+│  │ ████████░░ 80%   │       │  │      [根会话]           │  │
+│  │ 任务 1 ✓        │       │  │     ↙     ↘            │  │
+│  │ 任务 2 ✓        │       │  │  [子1]   [子2]          │  │
+│  │ 任务 3 - 进行中 │       │  └────────────────────────┘  │
+│  └──────────────────┘       │                               │
+├─────────────────────────────────────────────────────────────┤
+│  状态: 已连接  |  OpenCode 存储路径: ~/.local/share/opencode│
+└─────────────────────────────────────────────────────────────┘
+```
+
+## 注意事项
+
+- ⚠️ 本应用仅监控 OpenCode 的活动，不会修改任何数据
+- ⚠️ 不支持控制智能体行为（仅监控）
+- ⚠️ 不包含系统托盘、开机自启等功能
+- ⚠️ 数据为只读，不会影响 OpenCode 的正常运行
 
 ## 许可证
 
-MIT License
+本项目基于 MIT 许可证开源。
+
+## 相关链接
+
+- [OpenCode 官网](https://opencode.com)
+- [OCWatch 原项目](https://github.com/ocm-ai/ocwatch)
+- [Electron 文档](https://www.electronjs.org/docs)
+- [React 文档](https://react.dev)
+- [Vite 文档](https://vitejs.dev)
+
+---
+
+如果有问题或建议，欢迎提交 Issue 或 Pull Request。
