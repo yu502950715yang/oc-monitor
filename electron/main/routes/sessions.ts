@@ -39,6 +39,7 @@ export function registerSessionRoutes(app: Hono) {
       projectID: s.projectID,
       title: s.title,
       parentID: s.parentID,
+      status: s.status,
       updatedAt: s.updatedAt.toISOString(),
       createdAt: s.createdAt.toISOString(),
     }));
@@ -77,6 +78,7 @@ export function registerSessionRoutes(app: Hono) {
       title: session.title,
       parentID: session.parentID,
       directory: session.directory,
+      status: session.status,
       createdAt: session.createdAt.toISOString(),
       updatedAt: session.updatedAt.toISOString(),
     });
@@ -349,6 +351,7 @@ export function registerSessionRoutes(app: Hono) {
       title: session.title,
       projectID: session.projectID,
       parentID: session.parentID,
+      status: session.status,
       createdAt: session.createdAt.toISOString(),
       updatedAt: session.updatedAt.toISOString(),
       children: children.map((child) => ({
@@ -356,6 +359,7 @@ export function registerSessionRoutes(app: Hono) {
         title: child.title,
         projectID: child.projectID,
         parentID: child.parentID,
+        status: child.status,
         createdAt: child.createdAt.toISOString(),
         updatedAt: child.updatedAt.toISOString(),
       })),

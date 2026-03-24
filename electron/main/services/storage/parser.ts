@@ -4,6 +4,21 @@ import { homedir } from "node:os";
 import log from "electron-log";
 import initSqlJs, { Database } from "sql.js";
 
+export type SessionStatus = 'running' | 'waiting' | 'completed' | 'error';
+
+// 根据 updatedAt 计算会话状态
+function computeSessionStatus(updatedAt: Date): SessionStatus {
+  const now = Date.now();
+  const hoursSinceUpdate = (now - updatedAt.getTime()) / (1000 * 60 * 60);
+  
+  if (hoursSinceUpdate > 24) {
+    return 'completed';
+  } else if (hoursSinceUpdate > 1) {
+    return 'waiting';
+  }
+  return 'running';
+}
+
 export interface SessionMeta {
   id: string;
   projectID: string;
@@ -12,6 +27,7 @@ export interface SessionMeta {
   directory: string;
   createdAt: Date;
   updatedAt: Date;
+  status: SessionStatus;
 }
 
 export interface MessageMeta {
@@ -146,6 +162,7 @@ function querySessionsFromSqlite(): SessionMeta[] {
       
       if (sessionResult.length > 0 && sessionResult[0].values.length > 0) {
         for (const row of sessionResult[0].values) {
+          const updatedAt = row[6] ? new Date(Number(row[6])) : new Date();
           sessions.push({
             id: String(row[0] || ''),
             projectID: String(row[1] || ''),
@@ -153,7 +170,8 @@ function querySessionsFromSqlite(): SessionMeta[] {
             title: String(row[3] || 'Untitled Session'),
             directory: String(row[4] || ''),
             createdAt: row[5] ? new Date(Number(row[5])) : new Date(),
-            updatedAt: row[6] ? new Date(Number(row[6])) : new Date(),
+            updatedAt,
+            status: computeSessionStatus(updatedAt),
           });
         }
         log.info(`[storage] Loaded ${sessions.length} sessions from SQLite`);
@@ -175,13 +193,15 @@ function querySessionsFromSqlite(): SessionMeta[] {
       
       if (projectResult.length > 0 && projectResult[0].values.length > 0) {
         for (const row of projectResult[0].values) {
+          const updatedAt = row[4] ? new Date(Number(row[4])) : new Date();
           sessions.push({
             id: String(row[0] || ''),
             projectID: String(row[0] || ''),
             title: String(row[1] || 'Project'),
             directory: String(row[2] || ''),
             createdAt: row[3] ? new Date(Number(row[3])) : new Date(),
-            updatedAt: row[4] ? new Date(Number(row[4])) : new Date(),
+            updatedAt,
+            status: computeSessionStatus(updatedAt),
           });
         }
         log.info(`[storage] Loaded ${sessions.length} projects from SQLite as sessions`);
@@ -360,6 +380,7 @@ function parseSessionFile(filePath: string): SessionMeta | null {
     directory: data.directory || "",
     createdAt,
     updatedAt,
+    status: computeSessionStatus(updatedAt),
   };
 }
 

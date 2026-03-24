@@ -31,7 +31,8 @@ function transformSessions(apiSessions: any[]): Session[] {
   return apiSessions.map((s: any) => ({
     id: s.id,
     name: s.title || '未命名会话',
-    status: 'running' as const,
+    // 后端已计算好 status，直接使用
+    status: s.status || 'running',
     startTime: s.createdAt || s.startTime || '',
     parentID: s.parentID,
   }))
