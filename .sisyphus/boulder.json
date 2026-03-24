@@ -1,9 +1,9 @@
 {
-  "active_plan": "E:\\code\\oc-monitor\\.sisyphus\\plans\\activity-tree-per-session-fix.md",
-  "started_at": "2026-03-24T01:35:52.442Z",
+  "active_plan": "E:\\code\\oc-monitor\\.sisyphus\\plans\\activity-stream-summary.md",
+  "started_at": "2026-03-24T01:59:46.540Z",
   "session_ids": [
-    "ses_2e2ae4934ffeHLGEnYMA4ousuq"
+    "ses_2e271341dffeAUtnnN6gBj7D40"
   ],
-  "plan_name": "activity-tree-per-session-fix",
+  "plan_name": "activity-stream-summary",
   "agent": "atlas"
 }
