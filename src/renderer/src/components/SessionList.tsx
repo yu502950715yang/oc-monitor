@@ -9,7 +9,11 @@ export interface Session {
 
 // 相对时间格式化函数
 function formatRelativeTime(isoString: string): string {
+  if (!isoString) return '未知'
+  
   const date = new Date(isoString)
+  if (isNaN(date.getTime())) return '未知'
+  
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
   const diffSec = Math.floor(diffMs / 1000)

@@ -54,7 +54,10 @@ function AppContent() {
 
         {/* 内容区域 */}
         {activeView === 'stream' ? (
-          <ActivityStream activities={activities} />
+          <>
+            {console.log('[App] 渲染 ActivityStream, activities 数量:', activities?.length)}
+            <ActivityStream activities={activities} />
+          </>
         ) : (
           <ActivityTree sessions={getSessionNodes()} />
         )}

@@ -113,22 +113,25 @@ export function registerSessionRoutes(app: Hono) {
     const parts = await getPartsForSession(sessionID);
 
     const messageList = messages.slice(-maxItems).map((m) => {
-      // 从 data 字段提取消息内容
+      // 尝试从多个位置提取消息内容
       const msgData = m.data as any;
       let content = "";
       
-      if (msgData) {
-        // 尝试从 data 中提取文本内容
-        if (typeof msgData.content === "string") {
-          content = msgData.content.slice(0, 500); // 限制长度
-        } else if (Array.isArray(msgData)) {
-          // 如果是数组，尝试提取文本部分
-          const textParts = msgData
-            .filter((item: any) => item.type === "text")
-            .map((item: any) => item.text || "")
-            .join("");
-          content = textParts.slice(0, 500);
-        }
+      // 1. 尝试从 data.data 中提取（如果 data 是一个对象）
+      if (msgData?.content && typeof msgData.content === "string") {
+        content = msgData.content.slice(0, 500);
+      } 
+      // 2. 尝试从 data.data 中提取（如果 data 是一个数组）
+      else if (Array.isArray(msgData)) {
+        const textParts = msgData
+          .filter((item: any) => item.type === "text")
+          .map((item: any) => item.text || "")
+          .join("");
+        content = textParts.slice(0, 500);
+      }
+      // 3. 尝试从消息文件的根级别提取 content 字段
+      else if (typeof (m as any).content === "string") {
+        content = ((m as any).content || "").slice(0, 500);
       }
       
       return {
@@ -142,20 +145,50 @@ export function registerSessionRoutes(app: Hono) {
     });
 
     // 转换 parts 为活动流格式
+    // 先收集 text 类型的内容，用于补充消息
+    const textContents = new Map<string, string>();
+    parts.forEach(p => {
+      if (p.type === 'text' && p.data) {
+        const textData = p.data as any;
+        if (textData?.text) {
+          textContents.set(p.messageID, textData.text.slice(0, 500));
+        }
+      }
+    });
+
     const partList = parts.slice(-maxItems).map((p) => {
       const state = p.state as any;
+      // 如果是 text 类型，尝试从 data 中提取内容
+      let action = p.type === 'text' ? null : formatCurrentAction(p);
+      
+      // 对于 text 类型，尝试从 data 提取文本内容作为 action
+      if (p.type === 'text' && p.data) {
+        const textData = p.data as any;
+        if (textData?.text) {
+          action = textData.text.slice(0, 100);
+        }
+      }
+      
       return {
         id: p.id,
         messageID: p.messageID,
         sessionID: p.sessionID,
         type: p.type,
         tool: p.tool,
-        action: formatCurrentAction(p), // 格式化后的可读描述
+        action,
         status: state?.status,
         input: state?.input ? (typeof state.input === "string" ? state.input.slice(0, 500) : JSON.stringify(state.input).slice(0, 500)) : undefined,
         output: state?.output ? (typeof state.output === "string" ? state.output.slice(0, 500) : JSON.stringify(state.output).slice(0, 500)) : undefined,
         createdAt: p.createdAt.toISOString(),
       };
+    });
+    
+    // 用 text 内容补充消息
+    messageList.forEach(m => {
+      const textContent = textContents.get(m.id);
+      if (textContent && !m.content) {
+        m.content = textContent;
+      }
     });
 
     // 按时间合并消息和工具调用
@@ -316,11 +349,15 @@ export function registerSessionRoutes(app: Hono) {
       title: session.title,
       projectID: session.projectID,
       parentID: session.parentID,
+      createdAt: session.createdAt.toISOString(),
+      updatedAt: session.updatedAt.toISOString(),
       children: children.map((child) => ({
         id: child.id,
         title: child.title,
         projectID: child.projectID,
         parentID: child.parentID,
+        createdAt: child.createdAt.toISOString(),
+        updatedAt: child.updatedAt.toISOString(),
       })),
     };
 

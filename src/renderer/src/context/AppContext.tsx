@@ -22,6 +22,7 @@ interface AppContextType extends AppState {
   addActivity: (activity: Activity) => void
   getSessionNodes: () => SessionNode[]
   refresh: () => void
+  refreshSessionTree: () => void  // 单独刷新活动树数据
 }
 
 const AppContext = createContext<AppContextType | null>(null)
@@ -31,7 +32,7 @@ function transformSessions(apiSessions: any[]): Session[] {
     id: s.id,
     name: s.title || '未命名会话',
     status: 'running' as const,
-    startTime: s.createdAt ? new Date(s.createdAt).toLocaleTimeString('zh-CN', { hour12: false }) : '--:--:--',
+    startTime: s.createdAt || s.startTime || '',
     parentID: s.parentID,
   }))
 }
@@ -42,6 +43,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [plans, setPlans] = useState<Plan[]>([])
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
   const [activeView, setActiveView] = useState<'stream' | 'tree'>('stream')
+  const [cachedSessionTree, setCachedSessionTree] = useState<SessionTreeNode | null>(null)
 
   const { data: apiSessions, loading: sessionsLoading, error: sessionsError, refetch: refetchSessions } = useSessions()
   const { data: apiPlan, loading: planLoading, error: planError, refetch: refetchPlan } = usePlan()
@@ -52,6 +54,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   console.log('[AppContext] selectedSessionId:', selectedSessionId)
   console.log('[AppContext] sessionTree:', sessionTree)
   console.log('[AppContext] sessionTreeLoading:', sessionTreeLoading)
+  
+  // 缓存 sessionTree，防止轮询时短暂为空导致节点消失
+  useEffect(() => {
+    if (sessionTree) {
+      setCachedSessionTree(sessionTree)
+    }
+  }, [sessionTree])
 
   useEffect(() => {
     if (apiSessions) {
@@ -71,10 +80,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // 添加消息
       if (apiActivity.messages) {
         apiActivity.messages.forEach((m: any) => {
+          // 生成消息简介
+          let summary = ''
+          const msgContent = m.content || m.agent || ''
+          if (m.role === 'user') {
+            summary = msgContent ? '用户：' + msgContent.slice(0, 100) : '用户消息'
+          } else if (m.role === 'assistant') {
+            summary = msgContent ? '助手：' + msgContent.slice(0, 100) : (m.agent || '助手回复')
+          } else {
+            summary = m.agent || m.role || '消息'
+          }
+          
           activities.push({
             id: m.id,
             type: 'message' as const,
             content: m.content || m.agent || m.role || '消息',
+            summary,
             timestamp: m.createdAt,
             sessionId: m.sessionID,
             sessionName: apiActivity.session?.title,
@@ -87,18 +108,48 @@ export function AppProvider({ children }: { children: ReactNode }) {
       
       // 添加工具调用 (parts)
       if (apiActivity.parts) {
+        apiActivity.parts.filter((p: any) => p.type === 'tool').slice(0, 3).forEach((p: any) => {
+          // 调试工具类型
+          console.log('[AppContext] tool part:', { id: p.id, type: p.type, tool: p.tool, action: p.action, status: p.status })
+        })
+        
         apiActivity.parts.forEach((p: any) => {
+          // 调试每个 part 的 type
+          if (p.type === 'tool') {
+            console.log('[AppContext] 处理 tool part:', { id: p.id, type: p.type, tool: p.tool, action: p.action })
+          }
+          
           let content = p.action || p.tool || '工具调用'
+          let summary = p.action || p.tool || '工具调用'
+          
+          // 正确的 type 设置
+          const activityType = p.type === 'tool' ? 'tool' as const : p.type === 'reasoning' ? 'reasoning' as const : 'message' as const
+          
+          // 调试
+          if (p.type === 'tool') {
+            console.log('[AppContext] 生成的 activity:', { id: p.id, type: activityType, summary })
+          }
+          
+          // 计算耗时
+          let duration: number | undefined
+          if (p.state?.time?.start && p.state?.time?.end) {
+            duration = p.state.time.end - p.state.time.start
+          }
+          
+          // 获取推理内容
+          const reasoningContent = p.type === 'reasoning' ? (p.data?.text || p.action || '') : undefined
           
           // 如果是 MCP 工具，添加标识
           if (p.tool && (p.tool.startsWith('context7_') || p.tool.startsWith('websearch_'))) {
             content = `[MCP] ${content}`
+            summary = `[MCP] ${summary}`
           }
           
           activities.push({
             id: p.id,
-            type: p.type === 'tool' ? 'tool' as const : p.type === 'reasoning' ? 'message' as const : 'message' as const,
+            type: activityType,
             content,
+            summary: p.type === 'reasoning' ? (p.data?.text || '推理中...').slice(0, 100) : summary,
             timestamp: p.createdAt,
             sessionId: p.sessionID,
             sessionName: apiActivity.session?.title,
@@ -108,9 +159,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
             input: p.input,
             output: p.output,
             messageId: p.messageID,
+            // 增强字段
+            reasoningContent,
+            duration,
           })
         })
       }
+      
+      // 调试日志
+      const toolActivities = activities.filter((a: any) => a.type === 'tool').slice(0, 3)
+      console.log('[AppContext] 工具活动:', toolActivities.map(a => ({ 
+        id: a.id, 
+        type: a.type, 
+        content: a.content, 
+        summary: a.summary,
+        toolName: a.toolName
+      })))
       
       // 按时间排序并限制数量
       const sorted = activities
@@ -154,8 +218,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     refetchSessions()
     refetchPlan()
     refetchActivity()
+    // 活动树视图时不自动刷新 sessionTree（避免数据竞态导致节点闪烁）
+    // 活动树用户需手动点击刷新按钮
+    if (activeView !== 'tree') {
+      refetchSessionTree()
+    }
+  }, [refetchSessions, refetchPlan, refetchActivity, refetchSessionTree, activeView])
+
+  // 单独刷新活动树数据（手动刷新时使用）
+  const refreshSessionTree = useCallback(() => {
     refetchSessionTree()
-  }, [refetchSessions, refetchPlan, refetchActivity, refetchSessionTree])
+  }, [refetchSessionTree])
 
   usePolling({
     onPoll: refresh,
@@ -178,15 +251,34 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const getSessionNodes = useCallback((): SessionNode[] => {
+    // 使用缓存的 sessionTree，防止轮询时短暂为空
+    const tree = sessionTree || cachedSessionTree
+    
     // 如果有 sessionTree 数据（活动树视图），使用会话树
-    if (sessionTree) {
+    if (tree) {
       const buildNodes = (node: SessionTreeNode, level: number, parentId: string | null): SessionNode[] => {
+        // 根据 updatedAt 判断状态（1小时内更新算 running，否则算 completed）
+        let status: 'running' | 'waiting' | 'completed' | 'error' = 'running'
+        if (node.updatedAt) {
+          const updatedTime = new Date(node.updatedAt).getTime()
+          const now = Date.now()
+          const hoursSinceUpdate = (now - updatedTime) / (1000 * 60 * 60)
+          if (hoursSinceUpdate > 24) {
+            status = 'completed'
+          } else if (hoursSinceUpdate > 1) {
+            status = 'waiting'
+          }
+        }
+        
         const nodes: SessionNode[] = [{
           id: node.id,
           name: node.title,
-          status: 'running' as const,
+          status,
           parentId,
           level,
+          createdAt: node.createdAt,
+          updatedAt: node.updatedAt,
+          projectID: node.projectID,
         }]
         if (node.children) {
           for (const child of node.children) {
@@ -195,7 +287,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }
         return nodes
       }
-      return buildNodes(sessionTree, 0, null)
+      return buildNodes(tree, 0, null)
     }
     
     // 否则使用所有会话（用于没有选中会话或数据未加载时）
@@ -237,6 +329,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addActivity,
         getSessionNodes,
         refresh,
+        refreshSessionTree,
       }}
     >
       {children}

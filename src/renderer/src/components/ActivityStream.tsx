@@ -2,8 +2,9 @@ import { useState, useCallback } from 'react'
 
 export interface Activity {
   id: string
-  type: 'tool' | 'message' | 'plan' | 'task' | 'error'
+  type: 'tool' | 'message' | 'plan' | 'task' | 'error' | 'reasoning'
   content: string
+  summary?: string
   timestamp: string
   sessionId?: string
   sessionName?: string
@@ -15,11 +16,18 @@ export interface Activity {
   messageId?: string
   role?: string
   agent?: string
+  // 增强字段
+  reasoningContent?: string  // 推理过程内容
+  duration?: number          // 耗时（毫秒）
 }
 
 // 相对时间格式化函数
 function formatRelativeTime(isoString: string): string {
+  if (!isoString) return '未知'
+  
   const date = new Date(isoString)
+  if (isNaN(date.getTime())) return '未知'
+  
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
   const diffSec = Math.floor(diffMs / 1000)
@@ -66,9 +74,14 @@ const typeIconMap = {
   plan: { label: '计划', color: 'text-[#3fb950]', bg: 'bg-[#3fb950]/10' },
   task: { label: '任务', color: 'text-[#d29922]', bg: 'bg-[#d29922]/10' },
   error: { label: '错误', color: 'text-[#f85149]', bg: 'bg-[#f85149]/10' },
+  reasoning: { label: '推理', color: 'text-[#79c0ff]', bg: 'bg-[#79c0ff]/10' },
 }
 
 export default function ActivityStream({ activities }: ActivityStreamProps) {
+  // 详细调试
+  const toolActivities = activities?.filter((a: any) => a.type === 'tool') || []
+  console.log('[ActivityStream] 总数:', activities?.length, '工具类型:', toolActivities.length, '前3个工具:', toolActivities.slice(0, 3).map(a => ({ id: a.id, summary: a.summary, type: a.type })))
+  
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
 
   const toggleExpand = useCallback((id: string) => {
@@ -84,7 +97,7 @@ export default function ActivityStream({ activities }: ActivityStreamProps) {
   }, [])
 
   return (
-    <div className="flex-1 bg-[#0d1117] flex flex-col h-full">
+    <div className="flex-1 bg-[#0d1117] flex flex-col min-h-0">
       {/* 标题 */}
       <div className="px-4 py-3 border-b border-[#30363d] flex items-center justify-between flex-shrink-0">
         <h2 className="font-medium text-[#c9d1d9]">活动流</h2>
@@ -111,6 +124,18 @@ export default function ActivityStream({ activities }: ActivityStreamProps) {
                 typeInfo = toolColor
               }
             }
+            
+            // 格式化耗时
+            const formatDuration = (ms?: number) => {
+              if (!ms) return null
+              if (ms < 1000) return `${ms}ms`
+              if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
+              return `${Math.floor(ms / 60000)}m ${Math.round((ms % 60000) / 1000)}s`
+            }
+            
+            // 判断是否可展开
+            const canExpand = activity.input || activity.output || activity.reasoningContent
+            
             return (
               <div
                 key={activity.id}
@@ -122,6 +147,13 @@ export default function ActivityStream({ activities }: ActivityStreamProps) {
                     <span className={`text-xs font-medium ${typeInfo.color}`}>
                       {typeInfo.label}
                     </span>
+                    {/* 角色/智能体 */}
+                    {activity.role && (
+                      <span className="text-xs text-[#8b949e]">
+                        {activity.role === 'user' ? '用户' : activity.role === 'assistant' ? '助手' : activity.role}
+                        {activity.agent && ` · ${activity.agent}`}
+                      </span>
+                    )}
                     {activity.toolName && activity.type === 'tool' && (
                       <span className="text-xs text-[#8b949e]">
                         · {activity.toolName}
@@ -131,6 +163,7 @@ export default function ActivityStream({ activities }: ActivityStreamProps) {
                       <span className={`text-xs px-1.5 py-0.5 rounded ${
                         activity.status === 'completed' ? 'bg-[#3fb950]/20 text-[#3fb950]' :
                         activity.status === 'running' || activity.status === 'in_progress' ? 'bg-[#58a6ff]/20 text-[#58a6ff]' :
+                        activity.status === 'error' ? 'bg-[#f85149]/20 text-[#f85149]' :
                         'bg-[#8b949e]/20 text-[#8b949e]'
                       }`}>
                         {activity.status}
@@ -143,15 +176,41 @@ export default function ActivityStream({ activities }: ActivityStreamProps) {
                     )}
                   </div>
                   <span className="text-xs text-[#8b949e] flex items-center gap-1">
+                    {formatDuration(activity.duration) && (
+                      <span className="text-[#d29922]">{formatDuration(activity.duration)}</span>
+                    )}
                     {formatRelativeTime(activity.timestamp)}
-                    {(activity.input || activity.output) && (
+                    {canExpand && (
                       <span className="ml-1">{expandedIds.has(activity.id) ? '▼' : '▶'}</span>
                     )}
                   </span>
                 </div>
-                <p className="text-sm text-[#c9d1d9] break-all">{activity.content}</p>
+                {/* 推理内容单独展示 */}
+                {activity.type === 'reasoning' && activity.reasoningContent ? (
+                  <p className="text-sm text-[#79c0ff] italic break-all">{activity.reasoningContent.slice(0, 200)}{activity.reasoningContent.length > 200 ? '...' : ''}</p>
+                ) : (
+                  <p className="text-sm text-[#c9d1d9] break-all">{activity.summary || activity.content}</p>
+                )}
                 {expandedIds.has(activity.id) && (
                   <div className="mt-3 pt-3 border-t border-[#30363d]">
+                    {/* 推理内容详情 */}
+                    {activity.type === 'reasoning' && activity.reasoningContent && (
+                      <div className="mb-3">
+                        <div className="text-xs text-[#8b949e] mb-1">推理过程</div>
+                        <pre className="text-xs text-[#79c0ff] bg-[#161b22] p-2 rounded overflow-x-auto whitespace-pre-wrap italic">
+                          {activity.reasoningContent}
+                        </pre>
+                      </div>
+                    )}
+                    {/* 元信息 */}
+                    {(activity.role || activity.agent || activity.messageId) && (
+                      <div className="mb-3 text-xs text-[#8b949e] space-y-1">
+                        {activity.role && <div>角色: {activity.role}</div>}
+                        {activity.agent && <div>智能体: {activity.agent}</div>}
+                        {activity.messageId && <div>消息ID: {activity.messageId}</div>}
+                        {activity.duration && <div>耗时: {formatDuration(activity.duration)}</div>}
+                      </div>
+                    )}
                     {activity.input && (
                       <div className="mb-2">
                         <div className="text-xs text-[#8b949e] mb-1">输入</div>

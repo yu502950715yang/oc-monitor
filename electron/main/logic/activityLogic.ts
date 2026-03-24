@@ -46,7 +46,16 @@ export function formatCurrentAction(part: PartMeta): string | null {
 
   const toolName = getToolDisplayName(part.tool);
   const data = part.data as any;
-  const input = data?.input;
+  const state = part.state as any;
+  // input 可能在 data.input 或 state.input 中，需要先解析
+  let input = data?.input ?? state?.input;
+  if (typeof input === 'string') {
+    try {
+      input = JSON.parse(input);
+    } catch (e) {
+      // 解析失败，使用原始字符串
+    }
+  }
 
   // 任务委托 (task, subtask, agent)
   if (part.tool === "task" || part.tool === "delegate_task") {

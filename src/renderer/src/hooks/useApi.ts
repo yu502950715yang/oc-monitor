@@ -163,6 +163,8 @@ export interface SessionTreeNode {
   title: string
   projectID: string
   parentID?: string
+  createdAt?: string
+  updatedAt?: string
   children: SessionTreeNode[]
 }
 
