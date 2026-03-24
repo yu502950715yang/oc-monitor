@@ -1,5 +1,14 @@
 import { useState, useCallback } from 'react'
 
+// Token信息接口
+export interface TokenInfo {
+  total: number
+  input: number
+  output: number
+  reasoning: number
+  cache?: { read: number; write: number }
+}
+
 export interface Activity {
   id: string
   type: 'tool' | 'message' | 'plan' | 'task' | 'error' | 'reasoning'
@@ -16,9 +25,22 @@ export interface Activity {
   messageId?: string
   role?: string
   agent?: string
-  // 增强字段
-  reasoningContent?: string  // 推理过程内容
+  // 增强字段：时间信息
+  timeStart?: number
+  timeEnd?: number
   duration?: number          // 耗时（毫秒）
+  // 增强字段：错误信息
+  error?: string
+  // 增强字段：完整数据对象（包含tokens等）
+  data?: any
+  // 增强字段：Token和费用信息（仅message类型）
+  tokens?: TokenInfo
+  cost?: number
+  modelID?: string
+  providerID?: string
+  finish?: string
+  // 增强字段：推理过程
+  reasoningContent?: string  // 推理过程内容
 }
 
 // 相对时间格式化函数

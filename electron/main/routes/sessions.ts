@@ -142,6 +142,12 @@ export function registerSessionRoutes(app: Hono) {
         role: m.role,
         agent: m.agent,
         content,
+        // 增强字段：Token和费用信息
+        tokens: msgData?.tokens,
+        cost: msgData?.cost,
+        modelID: msgData?.modelID,
+        providerID: msgData?.providerID,
+        finish: msgData?.finish,
         createdAt: m.createdAt.toISOString(),
       };
     });
@@ -160,6 +166,7 @@ export function registerSessionRoutes(app: Hono) {
 
     const partList = parts.slice(-maxItems).map((p) => {
       const state = p.state as any;
+      const data = p.data as any;
       // 如果是 text 类型，尝试从 data 中提取内容
       let action = p.type === 'text' ? null : formatCurrentAction(p);
       
@@ -179,6 +186,13 @@ export function registerSessionRoutes(app: Hono) {
         tool: p.tool,
         action,
         status: state?.status,
+        // 增强字段：时间信息
+        timeStart: state?.time?.start,
+        timeEnd: state?.time?.end,
+        // 增强字段：错误信息
+        error: state?.error,
+        // 增强字段：完整data对象（包含tokens等）
+        data: data,
         input: state?.input ? (typeof state.input === "string" ? state.input.slice(0, 500) : JSON.stringify(state.input).slice(0, 500)) : undefined,
         output: state?.output ? (typeof state.output === "string" ? state.output.slice(0, 500) : JSON.stringify(state.output).slice(0, 500)) : undefined,
         createdAt: p.createdAt.toISOString(),
@@ -292,6 +306,7 @@ export function registerSessionRoutes(app: Hono) {
 
     const partList = filteredParts.slice(-maxItems).map((p) => {
       const state = p.state as any;
+      const data = p.data as any;
       return {
         id: p.id,
         messageID: p.messageID,
@@ -300,6 +315,13 @@ export function registerSessionRoutes(app: Hono) {
         tool: p.tool,
         action: formatCurrentAction(p),
         status: state?.status,
+        // 增强字段：时间信息
+        timeStart: state?.time?.start,
+        timeEnd: state?.time?.end,
+        // 增强字段：错误信息
+        error: state?.error,
+        // 增强字段：完整data对象
+        data: data,
         input: state?.input ? (typeof state.input === "string" ? state.input.slice(0, 500) : JSON.stringify(state.input).slice(0, 500)) : undefined,
         output: state?.output ? (typeof state.output === "string" ? state.output.slice(0, 500) : JSON.stringify(state.output).slice(0, 500)) : undefined,
         createdAt: p.createdAt.toISOString(),

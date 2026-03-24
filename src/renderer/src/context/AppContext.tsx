@@ -11,14 +11,14 @@ interface AppState {
   activities: Activity[]
   plans: Plan[]
   selectedSessionId: string | null
-  activeView: 'stream' | 'tree'
+  activeView: 'stream' | 'tree' | 'dashboard'
   isLoading: boolean
   error: string | null
 }
 
 interface AppContextType extends AppState {
   setSelectedSession: (id: string | null) => void
-  setActiveView: (view: 'stream' | 'tree') => void
+  setActiveView: (view: 'stream' | 'tree' | 'dashboard') => void
   addActivity: (activity: Activity) => void
   getSessionNodes: () => SessionNode[]
   refresh: () => void
@@ -43,7 +43,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [activities, setActivities] = useState<Activity[]>([])
   const [plans, setPlans] = useState<Plan[]>([])
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
-  const [activeView, setActiveView] = useState<'stream' | 'tree'>('stream')
+  const [activeView, setActiveView] = useState<'stream' | 'tree' | 'dashboard'>('stream')
   const [cachedSessionTree, setCachedSessionTree] = useState<SessionTreeNode | null>(null)
 
   const { data: apiSessions, loading: sessionsLoading, error: sessionsError, refetch: refetchSessions } = useSessions()
@@ -103,6 +103,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
             role: m.role,
             agent: m.agent,
             messageId: m.id,
+            // 增强字段：Token和费用信息
+            tokens: m.tokens,
+            cost: m.cost,
+            modelID: m.modelID,
+            providerID: m.providerID,
+            finish: m.finish,
           })
         })
       }
@@ -243,7 +249,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setSelectedSessionId(id)
   }, [])
 
-  const handleSetActiveView = useCallback((view: 'stream' | 'tree') => {
+  const handleSetActiveView = useCallback((view: 'stream' | 'tree' | 'dashboard') => {
     setActiveView(view)
   }, [])
 
