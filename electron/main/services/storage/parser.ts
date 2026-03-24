@@ -476,6 +476,20 @@ export async function reloadDbIfChanged(): Promise<boolean> {
   }
 }
 
+// 互斥锁：防止并发请求同时刷新数据库
+let isReloading = false;
+
+// 带互斥锁的数据库刷新函数
+async function ensureDbFresh(): Promise<void> {
+  if (isReloading) return;  // 已有请求在刷新，跳过
+  isReloading = true;
+  try {
+    await reloadDbIfChanged();
+  } finally {
+    isReloading = false;
+  }
+}
+
 // 强制重新加载数据库
 export async function forceReloadDb(): Promise<boolean> {
   const dbPath = getDbPath();
@@ -511,6 +525,8 @@ export async function forceReloadDb(): Promise<boolean> {
 
 // Get all sessions (SQLite 优先，回退到 JSON)
 export async function getAllSessions(): Promise<SessionMeta[]> {
+  await ensureDbFresh();
+  
   // 先尝试 SQLite
   await initSqlite();
   if (db) {
@@ -532,6 +548,8 @@ export async function getAllSessions(): Promise<SessionMeta[]> {
 
 // Get session by ID
 export async function getSession(id: string): Promise<SessionMeta | null> {
+  await ensureDbFresh();
+  
   // 先尝试 SQLite
   await initSqlite();
   if (db) {
@@ -548,6 +566,8 @@ export async function getSession(id: string): Promise<SessionMeta | null> {
 
 // Get all messages for a session
 export async function getMessagesForSession(sessionID: string): Promise<MessageMeta[]> {
+  await ensureDbFresh();
+  
   // 先尝试 SQLite
   await initSqlite();
   if (db) {
@@ -574,6 +594,8 @@ export async function getMessagesForSession(sessionID: string): Promise<MessageM
 
 // Get all parts for a session
 export async function getPartsForSession(sessionID: string): Promise<PartMeta[]> {
+  await ensureDbFresh();
+  
   // 先尝试 SQLite
   await initSqlite();
   if (db) {

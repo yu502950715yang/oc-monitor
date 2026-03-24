@@ -112,13 +112,34 @@ export function registerSessionRoutes(app: Hono) {
     const messages = await getMessagesForSession(sessionID);
     const parts = await getPartsForSession(sessionID);
 
-    const messageList = messages.slice(-maxItems).map((m) => ({
-      id: m.id,
-      sessionID: m.sessionID,
-      role: m.role,
-      agent: m.agent,
-      createdAt: m.createdAt.toISOString(),
-    }));
+    const messageList = messages.slice(-maxItems).map((m) => {
+      // 从 data 字段提取消息内容
+      const msgData = m.data as any;
+      let content = "";
+      
+      if (msgData) {
+        // 尝试从 data 中提取文本内容
+        if (typeof msgData.content === "string") {
+          content = msgData.content.slice(0, 500); // 限制长度
+        } else if (Array.isArray(msgData)) {
+          // 如果是数组，尝试提取文本部分
+          const textParts = msgData
+            .filter((item: any) => item.type === "text")
+            .map((item: any) => item.text || "")
+            .join("");
+          content = textParts.slice(0, 500);
+        }
+      }
+      
+      return {
+        id: m.id,
+        sessionID: m.sessionID,
+        role: m.role,
+        agent: m.agent,
+        content,
+        createdAt: m.createdAt.toISOString(),
+      };
+    });
 
     // 转换 parts 为活动流格式
     const partList = parts.slice(-maxItems).map((p) => {
@@ -131,8 +152,8 @@ export function registerSessionRoutes(app: Hono) {
         tool: p.tool,
         action: formatCurrentAction(p), // 格式化后的可读描述
         status: state?.status,
-        input: state?.input,
-        output: state?.output ? (typeof state.output === "string" ? state.output.slice(0, 200) : JSON.stringify(state.output).slice(0, 200)) : undefined,
+        input: state?.input ? (typeof state.input === "string" ? state.input.slice(0, 500) : JSON.stringify(state.input).slice(0, 500)) : undefined,
+        output: state?.output ? (typeof state.output === "string" ? state.output.slice(0, 500) : JSON.stringify(state.output).slice(0, 500)) : undefined,
         createdAt: p.createdAt.toISOString(),
       };
     });
@@ -141,7 +162,7 @@ export function registerSessionRoutes(app: Hono) {
     const allActivities = [
       ...messageList.map(m => ({ ...m, activityType: "message" })),
       ...partList.map(p => ({ ...p, activityType: "part" })),
-    ].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     return c.json({
       session: {
@@ -244,8 +265,8 @@ export function registerSessionRoutes(app: Hono) {
         tool: p.tool,
         action: formatCurrentAction(p),
         status: state?.status,
-        input: state?.input,
-        output: state?.output ? (typeof state.output === "string" ? state.output.slice(0, 200) : JSON.stringify(state.output).slice(0, 200)) : undefined,
+        input: state?.input ? (typeof state.input === "string" ? state.input.slice(0, 500) : JSON.stringify(state.input).slice(0, 500)) : undefined,
+        output: state?.output ? (typeof state.output === "string" ? state.output.slice(0, 500) : JSON.stringify(state.output).slice(0, 500)) : undefined,
         createdAt: p.createdAt.toISOString(),
       };
     });

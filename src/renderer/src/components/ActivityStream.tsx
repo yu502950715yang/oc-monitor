@@ -1,3 +1,5 @@
+import { useState, useCallback } from 'react'
+
 export interface Activity {
   id: string
   type: 'tool' | 'message' | 'plan' | 'task' | 'error'
@@ -7,6 +9,12 @@ export interface Activity {
   sessionName?: string
   toolName?: string
   status?: string
+  // 详细信息字段
+  input?: string
+  output?: string
+  messageId?: string
+  role?: string
+  agent?: string
 }
 
 // 相对时间格式化函数
@@ -61,6 +69,20 @@ const typeIconMap = {
 }
 
 export default function ActivityStream({ activities }: ActivityStreamProps) {
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+
+  const toggleExpand = useCallback((id: string) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) {
+        next.delete(id)
+      } else {
+        next.add(id)
+      }
+      return next
+    })
+  }, [])
+
   return (
     <div className="flex-1 bg-[#0d1117] flex flex-col h-full">
       {/* 标题 */}
@@ -92,7 +114,8 @@ export default function ActivityStream({ activities }: ActivityStreamProps) {
             return (
               <div
                 key={activity.id}
-                className={`p-3 rounded-lg ${typeInfo.bg} border border-[#30363d]`}
+                className={`p-3 rounded-lg ${typeInfo.bg} border border-[#30363d] cursor-pointer hover:opacity-80 transition-opacity`}
+                onClick={() => toggleExpand(activity.id)}
               >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
@@ -119,9 +142,34 @@ export default function ActivityStream({ activities }: ActivityStreamProps) {
                       </span>
                     )}
                   </div>
-                  <span className="text-xs text-[#8b949e]">{formatRelativeTime(activity.timestamp)}</span>
+                  <span className="text-xs text-[#8b949e] flex items-center gap-1">
+                    {formatRelativeTime(activity.timestamp)}
+                    {(activity.input || activity.output) && (
+                      <span className="ml-1">{expandedIds.has(activity.id) ? '▼' : '▶'}</span>
+                    )}
+                  </span>
                 </div>
                 <p className="text-sm text-[#c9d1d9] break-all">{activity.content}</p>
+                {expandedIds.has(activity.id) && (
+                  <div className="mt-3 pt-3 border-t border-[#30363d]">
+                    {activity.input && (
+                      <div className="mb-2">
+                        <div className="text-xs text-[#8b949e] mb-1">输入</div>
+                        <pre className="text-xs text-[#c9d1d9] bg-[#161b22] p-2 rounded overflow-x-auto whitespace-pre-wrap">
+                          {activity.input}
+                        </pre>
+                      </div>
+                    )}
+                    {activity.output && (
+                      <div>
+                        <div className="text-xs text-[#8b949e] mb-1">输出</div>
+                        <pre className="text-xs text-[#c9d1d9] bg-[#161b22] p-2 rounded overflow-x-auto whitespace-pre-wrap">
+                          {activity.output}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )
           })

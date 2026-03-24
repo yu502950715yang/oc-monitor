@@ -67,10 +67,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
           activities.push({
             id: m.id,
             type: 'message' as const,
-            content: m.agent || m.role || '消息',
+            content: m.content || m.agent || m.role || '消息',
             timestamp: m.createdAt,
             sessionId: m.sessionID,
             sessionName: apiActivity.session?.title,
+            role: m.role,
+            agent: m.agent,
+            messageId: m.id,
           })
         })
       }
@@ -95,6 +98,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
             // 附加信息
             toolName: p.tool,
             status: p.status,
+            input: p.input,
+            output: p.output,
+            messageId: p.messageID,
           })
         })
       }

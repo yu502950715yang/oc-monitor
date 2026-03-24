@@ -1,9 +1,9 @@
 {
-  "active_plan": "E:\\code\\oc-monitor\\.sisyphus\\plans\\activity-stream-refactor.md",
-  "started_at": "2026-03-23T07:51:05.508Z",
+  "active_plan": "E:\\code\\oc-monitor\\.sisyphus\\plans\\auto-refresh-fix.md",
+  "started_at": "2026-03-24T01:18:02.895Z",
   "session_ids": [
-    "ses_2e675b8b7ffe28VuWuH06OH435"
+    "ses_2e2ae4934ffeHLGEnYMA4ousuq"
   ],
-  "plan_name": "activity-stream-refactor",
+  "plan_name": "auto-refresh-fix",
   "agent": "atlas"
 }
