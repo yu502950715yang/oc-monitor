@@ -3,7 +3,7 @@ import type { Session } from '../components/SessionList'
 import type { Activity } from '../components/ActivityStream'
 import type { Plan } from '../components/PlanProgress'
 import type { SessionNode } from '../components/ActivityTree'
-import { useSessions, usePlan, useActivity } from '../hooks/useApi'
+import { useSessions, usePlan, useActivity, useSessionTree, type SessionTreeNode } from '../hooks/useApi'
 import { usePolling } from '../hooks/usePolling'
 
 interface AppState {
@@ -32,6 +32,7 @@ function transformSessions(apiSessions: any[]): Session[] {
     name: s.title || '未命名会话',
     status: 'running' as const,
     startTime: s.createdAt ? new Date(s.createdAt).toLocaleTimeString('zh-CN', { hour12: false }) : '--:--:--',
+    parentID: s.parentID,
   }))
 }
 
@@ -42,9 +43,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
   const [activeView, setActiveView] = useState<'stream' | 'tree'>('stream')
 
-  const { data: apiSessions, isLoading: sessionsLoading, error: sessionsError, refetch: refetchSessions } = useSessions()
-  const { data: apiPlan, isLoading: planLoading, error: planError, refetch: refetchPlan } = usePlan()
-  const { data: apiActivity, isLoading: activityLoading, refetch: refetchActivity } = useActivity(selectedSessionId)
+  const { data: apiSessions, loading: sessionsLoading, error: sessionsError, refetch: refetchSessions } = useSessions()
+  const { data: apiPlan, loading: planLoading, error: planError, refetch: refetchPlan } = usePlan()
+  const { data: apiActivity, loading: activityLoading, refetch: refetchActivity } = useActivity(selectedSessionId)
+  const { data: sessionTree, loading: sessionTreeLoading, refetch: refetchSessionTree } = useSessionTree(selectedSessionId)
+  
+  // 调试日志
+  console.log('[AppContext] selectedSessionId:', selectedSessionId)
+  console.log('[AppContext] sessionTree:', sessionTree)
+  console.log('[AppContext] sessionTreeLoading:', sessionTreeLoading)
 
   useEffect(() => {
     if (apiSessions) {
@@ -147,7 +154,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     refetchSessions()
     refetchPlan()
     refetchActivity()
-  }, [refetchSessions, refetchPlan, refetchActivity])
+    refetchSessionTree()
+  }, [refetchSessions, refetchPlan, refetchActivity, refetchSessionTree])
 
   usePolling({
     onPoll: refresh,
@@ -170,14 +178,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const getSessionNodes = useCallback((): SessionNode[] => {
-    return sessions.map((session, index) => ({
+    // 如果有 sessionTree 数据（活动树视图），使用会话树
+    if (sessionTree) {
+      const buildNodes = (node: SessionTreeNode, level: number, parentId: string | null): SessionNode[] => {
+        const nodes: SessionNode[] = [{
+          id: node.id,
+          name: node.title,
+          status: 'running' as const,
+          parentId,
+          level,
+        }]
+        if (node.children) {
+          for (const child of node.children) {
+            nodes.push(...buildNodes(child, level + 1, node.id))
+          }
+        }
+        return nodes
+      }
+      return buildNodes(sessionTree, 0, null)
+    }
+    
+    // 否则使用所有会话（用于没有选中会话或数据未加载时）
+    const sessionMap = new Map(sessions.map(s => [s.id, s]))
+    
+    const getLevel = (session: Session, visited: Set<string> = new Set()): number => {
+      if (!session.parentID || visited.has(session.id)) {
+        return 0
+      }
+      visited.add(session.id)
+      const parent = sessionMap.get(session.parentID)
+      if (!parent) {
+        return 0
+      }
+      return 1 + getLevel(parent, visited)
+    }
+    
+    return sessions.map((session) => ({
       id: session.id,
       name: session.name,
       status: session.status,
-      parentId: index > 0 ? sessions[0]?.id : null,
-      level: index === 0 ? 0 : 1,
+      parentId: session.parentID || null,
+      level: getLevel(session),
     }))
-  }, [sessions])
+  }, [sessions, sessionTree])
 
   return (
     <AppContext.Provider

@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import {
   ReactFlow,
   Controls,
@@ -60,16 +60,17 @@ const nodeTypes = {
 }
 
 export default function ActivityTree({ sessions }: ActivityTreeProps) {
-  // 将 sessions 转换为节点
-  const initialNodes: Node[] = sessions.map((session) => ({
+  // 使用 useMemo 确保引用稳定，避免无限渲染
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const nodes = useMemo(() => sessions.map((session) => ({
     id: session.id,
     type: 'session',
     position: { x: session.level * 200, y: sessions.filter(s => s.level === session.level).indexOf(session) * 80 },
     data: session,
-  }))
+  })) as any, [sessions])
 
-  // 将 sessions 转换为边
-  const initialEdges: Edge[] = sessions
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const edges = useMemo(() => sessions
     .filter(session => session.parentId)
     .map(session => ({
       id: `${session.parentId}-${session.id}`,
@@ -78,10 +79,16 @@ export default function ActivityTree({ sessions }: ActivityTreeProps) {
       type: 'smoothstep',
       style: { stroke: '#30363d', strokeWidth: 2 },
       animated: session.status === 'running',
-    }))
+    })) as any, [sessions])
 
-  const [nodes, setNodes] = useNodesState(initialNodes)
-  const [edges, setEdges] = useEdgesState(initialEdges)
+  const [, setNodes] = useNodesState(nodes)
+  const [, setEdges] = useEdgesState(edges)
+
+  // 当 sessions 变化时更新节点（仅在非受控模式下）
+  useMemo(() => {
+    setNodes(nodes)
+    setEdges(edges)
+  }, [nodes, edges, setNodes, setEdges])
 
   const onNodesChange = useCallback(
     (changes: any[]) => setNodes((nds) => applyNodeChanges(changes, nds)),

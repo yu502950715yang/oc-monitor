@@ -22,6 +22,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getSessions: () => ipcRenderer.invoke('api:fetch', '/api/sessions'),
     getSession: (id: string) => ipcRenderer.invoke('api:fetch', `/api/sessions/${id}`),
     getActivity: (id: string) => ipcRenderer.invoke('api:fetch', `/api/sessions/${id}/activity`),
+    getSessionTree: (id: string) => ipcRenderer.invoke('api:fetch', `/api/sessions/${id}/tree`),
     getPlan: () => ipcRenderer.invoke('api:fetch', '/api/plan'),
     health: () => ipcRenderer.invoke('api:fetch', '/api/health'),
   },
@@ -41,6 +42,7 @@ declare global {
         getSessions: () => Promise<any>
         getSession: (id: string) => Promise<any>
         getActivity: (id: string) => Promise<any>
+        getSessionTree: (id: string) => Promise<any>
         getPlan: () => Promise<any>
         health: () => Promise<any>
       }

@@ -4,6 +4,7 @@ export interface Session {
   status: 'running' | 'waiting' | 'completed' | 'error'
   startTime: string
   progress?: number
+  parentID?: string
 }
 
 // 相对时间格式化函数

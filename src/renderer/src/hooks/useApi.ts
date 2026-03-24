@@ -7,6 +7,7 @@ export interface Session {
   status: 'running' | 'waiting' | 'completed' | 'error'
   startTime: string
   progress?: number
+  parentID?: string
 }
 
 export interface Activity {
@@ -154,4 +155,42 @@ export function usePlan() {
   }, [fetchPlan])
 
   return { ...state, refetch: fetchPlan }
+}
+
+// Session Tree API response type
+export interface SessionTreeNode {
+  id: string
+  title: string
+  projectID: string
+  parentID?: string
+  children: SessionTreeNode[]
+}
+
+// Hook for fetching session tree
+export function useSessionTree(id: string | null) {
+  const [state, setState] = useState<ApiState<SessionTreeNode | null>>({
+    data: null,
+    loading: true,
+    error: null,
+  })
+
+  const fetchSessionTree = useCallback(async () => {
+    if (!id) {
+      setState({ data: null, loading: false, error: null })
+      return
+    }
+    setState(prev => ({ ...prev, loading: true, error: null }))
+    try {
+      const result = await window.electronAPI.api.getSessionTree(id)
+      setState({ data: result, loading: false, error: null })
+    } catch (err) {
+      setState({ data: null, loading: false, error: err as Error })
+    }
+  }, [id])
+
+  useEffect(() => {
+    fetchSessionTree()
+  }, [fetchSessionTree])
+
+  return { ...state, refetch: fetchSessionTree }
 }

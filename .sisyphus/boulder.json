@@ -1,9 +1,9 @@
 {
-  "active_plan": "E:\\code\\oc-monitor\\.sisyphus\\plans\\auto-refresh-fix.md",
-  "started_at": "2026-03-24T01:18:02.895Z",
+  "active_plan": "E:\\code\\oc-monitor\\.sisyphus\\plans\\activity-tree-per-session-fix.md",
+  "started_at": "2026-03-24T01:35:52.442Z",
   "session_ids": [
     "ses_2e2ae4934ffeHLGEnYMA4ousuq"
   ],
-  "plan_name": "auto-refresh-fix",
+  "plan_name": "activity-tree-per-session-fix",
   "agent": "atlas"
 }
