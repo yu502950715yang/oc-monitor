@@ -121,19 +121,18 @@ export function registerSessionRoutes(app: Hono) {
       
       // 1. 尝试从 data.data 中提取（如果 data 是一个对象）
       if (msgData?.content && typeof msgData.content === "string") {
-        content = msgData.content.slice(0, 500);
+        content = msgData.content;
       } 
       // 2. 尝试从 data.data 中提取（如果 data 是一个数组）
       else if (Array.isArray(msgData)) {
-        const textParts = msgData
+        content = msgData
           .filter((item: any) => item.type === "text")
           .map((item: any) => item.text || "")
           .join("");
-        content = textParts.slice(0, 500);
       }
       // 3. 尝试从消息文件的根级别提取 content 字段
       else if (typeof (m as any).content === "string") {
-        content = ((m as any).content || "").slice(0, 500);
+        content = (m as any).content || "";
       }
       
       return {
@@ -159,7 +158,7 @@ export function registerSessionRoutes(app: Hono) {
       if (p.type === 'text' && p.data) {
         const textData = p.data as any;
         if (textData?.text) {
-          textContents.set(p.messageID, textData.text.slice(0, 500));
+          textContents.set(p.messageID, textData.text);
         }
       }
     });
@@ -174,7 +173,7 @@ export function registerSessionRoutes(app: Hono) {
       if (p.type === 'text' && p.data) {
         const textData = p.data as any;
         if (textData?.text) {
-          action = textData.text.slice(0, 100);
+          action = textData.text;
         }
       }
       
@@ -193,8 +192,8 @@ export function registerSessionRoutes(app: Hono) {
         error: state?.error,
         // 增强字段：完整data对象（包含tokens等）
         data: data,
-        input: state?.input ? (typeof state.input === "string" ? state.input.slice(0, 500) : JSON.stringify(state.input).slice(0, 500)) : undefined,
-        output: state?.output ? (typeof state.output === "string" ? state.output.slice(0, 500) : JSON.stringify(state.output).slice(0, 500)) : undefined,
+        input: state?.input ? (typeof state.input === "string" ? state.input : JSON.stringify(state.input)) : undefined,
+        output: state?.output ? (typeof state.output === "string" ? state.output : JSON.stringify(state.output)) : undefined,
         createdAt: p.createdAt.toISOString(),
       };
     });
@@ -322,8 +321,8 @@ export function registerSessionRoutes(app: Hono) {
         error: state?.error,
         // 增强字段：完整data对象
         data: data,
-        input: state?.input ? (typeof state.input === "string" ? state.input.slice(0, 500) : JSON.stringify(state.input).slice(0, 500)) : undefined,
-        output: state?.output ? (typeof state.output === "string" ? state.output.slice(0, 500) : JSON.stringify(state.output).slice(0, 500)) : undefined,
+        input: state?.input ? (typeof state.input === "string" ? state.input : JSON.stringify(state.input)) : undefined,
+        output: state?.output ? (typeof state.output === "string" ? state.output : JSON.stringify(state.output)) : undefined,
         createdAt: p.createdAt.toISOString(),
       };
     });

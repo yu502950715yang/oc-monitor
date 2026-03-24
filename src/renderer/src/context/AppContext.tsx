@@ -81,9 +81,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // 添加消息
       if (apiActivity.messages) {
         apiActivity.messages.forEach((m: any) => {
+          const msgContent = m.content || ''
+          
           // 生成消息简介
           let summary = ''
-          const msgContent = m.content || m.agent || ''
           if (m.role === 'user') {
             summary = msgContent ? '用户：' + msgContent.slice(0, 100) : '用户消息'
           } else if (m.role === 'assistant') {
@@ -152,6 +153,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
             summary = `[MCP] ${summary}`
           }
           
+          // 如果是 skill 工具，提取 skill 名称和参数
+          let skillName: string | undefined
+          let userMessage: string | undefined
+          if (p.tool === 'skill' && p.data?.state?.input) {
+            skillName = p.data.state.input.name
+            userMessage = p.data.state.input.user_message
+            // 优先显示 skill 名称
+            if (skillName) {
+              content = `[Skill] ${skillName}`
+              summary = `[Skill] ${skillName}${userMessage ? ': ' + userMessage.slice(0, 50) : ''}`
+            }
+          }
+          
           activities.push({
             id: p.id,
             type: activityType,
@@ -169,6 +183,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
             // 增强字段
             reasoningContent,
             duration,
+            // Skill 额外信息
+            skillName,
+            userMessage,
           })
         })
       }

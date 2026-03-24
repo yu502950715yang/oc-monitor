@@ -41,6 +41,9 @@ export interface Activity {
   finish?: string
   // 增强字段：推理过程
   reasoningContent?: string  // 推理过程内容
+  skillName?: string
+  userMessage?: string
+  
 }
 
 // 相对时间格式化函数
@@ -78,6 +81,7 @@ const toolTypeColors: Record<string, { label: string; color: string; bg: string 
   bash: { label: '运行', color: 'text-[#f85149]', bg: 'bg-[#f85149]/10' },
   grep: { label: '搜索', color: 'text-[#a371f7]', bg: 'bg-[#a371f7]/10' },
   glob: { label: '查找', color: 'text-[#79c0ff]', bg: 'bg-[#79c0ff]/10' },
+  skill: { label: '技能', color: 'text-[#a855f7]', bg: 'bg-[#a855f7]/10' },
   task: { label: '委托', color: 'text-[#d2a8ff]', bg: 'bg-[#d2a8ff]/10' },
   webfetch: { label: '获取', color: 'text-[#ffa657]', bg: 'bg-[#ffa657]/10' },
   'context7_query-docs': { label: 'MCP', color: 'text-[#ff7b72]', bg: 'bg-[#ff7b72]/10' },
@@ -169,6 +173,12 @@ export default function ActivityStream({ activities }: ActivityStreamProps) {
                       <span className="text-xs text-[#8b949e]">
                         {activity.role === 'user' ? '用户' : activity.role === 'assistant' ? '助手' : activity.role}
                         {activity.agent && ` · ${activity.agent}`}
+                      </span>
+                    )}
+                    {/* Skill 工具调用显示 */}
+                    {activity.skillName && (
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-[#a855f7]/20 text-[#a855f7]">
+                        [Skill] {activity.skillName}
                       </span>
                     )}
                     {activity.toolName && activity.type === 'tool' && (

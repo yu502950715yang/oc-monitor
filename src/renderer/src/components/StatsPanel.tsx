@@ -20,6 +20,12 @@ const MCPIcon = () => (
   </svg>
 )
 
+const SkillIcon = () => (
+  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M12 2L9.19 8.63L2 9.24L7.46 13.97L5.82 21L12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.63L12 2Z" />
+  </svg>
+)
+
 export default function StatsPanel() {
   const { sessions, activities } = useApp()
 
@@ -40,6 +46,23 @@ export default function StatsPanel() {
     )
     const mcpCount = mcpTools.length
     
+    // Skill调用统计
+    const skillActivities = toolActivities.filter(a => a.toolName === 'skill')
+    const skillCount = skillActivities.length
+    
+    // 按skill名称分组统计
+    const skillCountMap: Record<string, number> = {}
+    skillActivities.forEach(call => {
+      const skillName = (call as any).skillName || 'unknown'
+      skillCountMap[skillName] = (skillCountMap[skillName] || 0) + 1
+    })
+    
+    // 获取Top Skills
+    const topSkills = Object.entries(skillCountMap)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([name, count]) => ({ name, count }))
+    
     // Token统计
     const messageActivities = activities.filter(a => a.type === 'message' && a.tokens)
     const totalTokens = messageActivities.reduce((sum, m) => sum + (m.tokens?.total || 0), 0)
@@ -54,30 +77,45 @@ export default function StatsPanel() {
       mcpCount,
       totalTokens,
       errorRate,
+      skillCount,
+      topSkills,
     }
   }, [sessions, activities])
+
+  // 卡片颜色配置
+  const cardColors: Record<string, { from: string; to: string; border: string; hover: string; text: string }> = {
+    '总Token': { from: 'from-[#fbbf24]/20', to: 'to-[#fbbf24]/5', border: 'border-[#fbbf24]/20', hover: 'hover:border-[#fbbf24]/40', text: 'text-[#fbbf24]' },
+    '工具调用': { from: 'from-[#3b82f6]/20', to: 'to-[#3b82f6]/5', border: 'border-[#3b82f6]/20', hover: 'hover:border-[#3b82f6]/40', text: 'text-[#3b82f6]' },
+    'Skills调用': { from: 'from-[#a855f7]/20', to: 'to-[#a855f7]/5', border: 'border-[#a855f7]/20', hover: 'hover:border-[#a855f7]/40', text: 'text-[#a855f7]' },
+    'MCP调用': { from: 'from-[#06b6d4]/20', to: 'to-[#06b6d4]/5', border: 'border-[#06b6d4]/20', hover: 'hover:border-[#06b6d4]/40', text: 'text-[#06b6d4]' },
+    '错误': { from: 'from-[#f85149]/20', to: 'to-[#f85149]/5', border: 'border-[#f85149]/20', hover: 'hover:border-[#f85149]/40', text: 'text-[#f85149]' },
+  }
 
   const statCards = [
     {
       label: '总Token',
       value: stats.totalTokens > 0 ? stats.totalTokens.toLocaleString() : '-',
-      color: 'text-[#fbbf24]',
-      bg: 'bg-[#fbbf24]/10',
       icon: <TokenIcon />,
     },
     {
       label: '工具调用',
       value: stats.totalTools,
-      color: 'text-[#3b82f6]',
-      bg: 'bg-[#3b82f6]/10',
       icon: <ToolIcon />,
+    },
+    {
+      label: 'Skills调用',
+      value: stats.skillCount,
+      icon: <SkillIcon />,
     },
     {
       label: 'MCP调用',
       value: stats.mcpCount,
-      color: 'text-[#06b6d4]',
-      bg: 'bg-[#06b6d4]/10',
       icon: <MCPIcon />,
+    },
+    {
+      label: '错误',
+      value: stats.errorCount,
+      icon: <span className="text-lg">⚠</span>,
     },
   ]
 
@@ -91,25 +129,36 @@ export default function StatsPanel() {
 
       {/* 统计卡片列表 */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {statCards.map((card, index) => (
-          <div
-            key={index}
-            className={`p-4 rounded-lg border border-[#30363d] ${card.bg}`}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-[#8b949e]">{card.label}</span>
-              <span className={`text-lg ${card.color}`}>{card.icon}</span>
-            </div>
-            <div className={`text-2xl font-semibold ${card.color}`}>
-              {card.value}
-            </div>
-            {card.label === '错误调用' && stats.totalTools > 0 && (
-              <div className="text-xs text-[#8b949e] mt-1">
-                错误率: {stats.errorRate}%
+        {statCards.map((card, index) => {
+          const colors = cardColors[card.label] || { from: 'from-[#30363d]/20', to: 'to-[#30363d]/5', border: 'border-[#30363d]/20', hover: 'hover:border-[#30363d]/40', text: 'text-[#8b949e]' }
+          return (
+            <div
+              key={index}
+              className={`relative overflow-hidden p-4 rounded-xl border ${colors.border} bg-gradient-to-br ${colors.from} ${colors.to} ${colors.hover} transition-all duration-300 group`}
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-[#8b949e]">{card.label}</span>
+                <span className={`text-lg ${colors.text}`}>{card.icon}</span>
               </div>
-            )}
+              <div className={`text-2xl font-semibold ${colors.text}`}>
+                {card.value}
+              </div>
+            </div>
+          )
+        })}
+        
+        {/* Top Skills 列表 */}
+        {stats.topSkills.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-[#30363d]">
+            <div className="text-xs text-[#8b949e] mb-2">Top Skills</div>
+            {stats.topSkills.map((skill, idx) => (
+              <div key={idx} className="flex items-center justify-between py-1">
+                <span className="text-xs text-[#a855f7]">{skill.name}</span>
+                <span className="text-xs text-[#8b949e]">{skill.count}</span>
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
 
       {/* 汇总信息 */}
