@@ -40,18 +40,18 @@ export default function StatsPanel() {
 
   const statCards = [
     {
-      label: '工具调用',
-      value: stats.totalTools,
-      color: 'text-[#a371f7]',
-      bg: 'bg-[#a371f7]/10',
-      icon: '🔧',
-    },
-    {
       label: '总Token',
       value: stats.totalTokens > 0 ? stats.totalTokens.toLocaleString() : '-',
       color: 'text-[#3fb950]',
       bg: 'bg-[#3fb950]/10',
       icon: '🪙',
+    },
+    {
+      label: '工具调用',
+      value: stats.totalTools,
+      color: 'text-[#a371f7]',
+      bg: 'bg-[#a371f7]/10',
+      icon: '🔧',
     },
     {
       label: 'MCP调用',

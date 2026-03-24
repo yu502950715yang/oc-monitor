@@ -1,7 +1,8 @@
 # PROJECT KNOWLEDGE BASE
 
 **Generated:** 2026-03-24
-**Commit:** c5b0d4b
+**Commit:** 4b2a63e
+**Branch:** main
 
 ## OVERVIEW
 
@@ -70,10 +71,14 @@ OC 监控助手 — 基于 Electron + React 19 的桌面应用，实时监控 Op
 ## ANTI-PATTERNS (THIS PROJECT)
 
 1. **空 Catch 块** — `parser.ts:237,284` 静默吞掉 JSON 解析错误
-2. **生产环境 console.log** — 多处调试语句未移除 (AppContext, ActivityStream)
+2. **生产环境 console.log** — 多处调试语句未移除
+   - `AppContext.tsx:55-57,120,126,137,172-178`
+   - `ActivityStream.tsx:105`
 3. **过度使用 `any`** — preload/index.ts 8处, server.ts 4处
 4. **`as any` 类型断言** — sessions.ts 9处, activityLogic.ts 7处
 5. **备份文件未清理** — `parser.ts.bak` 应删除
+6. **SQL 注入风险** — `parser.ts:228,271` 直接拼接 sessionID 到 SQL（仅简单转义）
+7. **类型推断不严格** — `useApi.ts` 多处 `any[]` 参数
 
 ## UNIQUE STYLES
 
@@ -97,3 +102,5 @@ npm run typecheck     # TypeScript 类型检查
 - 前端轮询: 3 秒间隔
 - 无测试框架，无 CI/CD
 - 无 ESLint/Prettier 配置
+- 前端源码嵌套: `src/renderer/src/` (非标准 src/)
+- 构建: electron-builder (NSIS/DMG)
