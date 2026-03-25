@@ -115,7 +115,7 @@ export default function SessionList({
                     <span className="text-sm font-medium text-[var(--color-text-primary)] truncate">
                       {session.name}
                     </span>
-                    <span className={`text-xs ${status.color} flex items-center gap-1`}>
+                    <span className={`text-xs ${status.color} flex items-center gap-1 flex-shrink-0`}>
                       <StatusIcon className={`w-3 h-3 ${isRunning ? 'animate-spin' : ''}`} />
                       {status.label}
                     </span>
