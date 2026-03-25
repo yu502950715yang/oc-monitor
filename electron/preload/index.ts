@@ -17,15 +17,18 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeAllListeners('update-available')
   },
 
-  // 后端 API 调用
-  api: {
-    getSessions: () => ipcRenderer.invoke('api:fetch', '/api/sessions'),
-    getSession: (id: string) => ipcRenderer.invoke('api:fetch', `/api/sessions/${id}`),
-    getActivity: (id: string) => ipcRenderer.invoke('api:fetch', `/api/sessions/${id}/activity`),
-    getSessionTree: (id: string) => ipcRenderer.invoke('api:fetch', `/api/sessions/${id}/tree`),
-    getPlan: () => ipcRenderer.invoke('api:fetch', '/api/plan'),
-    health: () => ipcRenderer.invoke('api:fetch', '/api/health'),
-  },
+// 后端 API 调用
+    api: {
+      getSessions: (limit?: number) => {
+        const url = limit ? `/api/sessions?limit=${limit}` : '/api/sessions'
+        return ipcRenderer.invoke('api:fetch', url)
+      },
+      getSession: (id: string) => ipcRenderer.invoke('api:fetch', `/api/sessions/${id}`),
+      getActivity: (id: string) => ipcRenderer.invoke('api:fetch', `/api/sessions/${id}/activity`),
+      getSessionTree: (id: string) => ipcRenderer.invoke('api:fetch', `/api/sessions/${id}/tree`),
+      getPlan: () => ipcRenderer.invoke('api:fetch', '/api/plan'),
+      health: () => ipcRenderer.invoke('api:fetch', '/api/health'),
+    },
 })
 
 // 类型声明
@@ -39,7 +42,7 @@ declare global {
       close: () => void
       onUpdateAvailable: (callback: (info: any) => void) => () => void
       api: {
-        getSessions: () => Promise<any>
+        getSessions: (limit?: number) => Promise<any>
         getSession: (id: string) => Promise<any>
         getActivity: (id: string) => Promise<any>
         getSessionTree: (id: string) => Promise<any>

@@ -1,3 +1,4 @@
+import { useRef, useCallback, useEffect } from 'react'
 import { formatRelativeTime } from '@/utils/format'
 import { Clock, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 
@@ -12,8 +13,11 @@ export interface Session {
 
 interface SessionListProps {
   sessions: Session[]
+  totalSessions?: number
+  runningSessions?: number
   selectedId?: string
   onSelect?: (id: string) => void
+  onLoadMore?: () => void
 }
 
 const statusMap = {
@@ -43,7 +47,43 @@ const statusMap = {
   },
 }
 
-export default function SessionList({ sessions, selectedId, onSelect }: SessionListProps) {
+export default function SessionList({ 
+  sessions, 
+  totalSessions = 0, 
+  runningSessions = 0,
+  selectedId, 
+  onSelect,
+  onLoadMore 
+}: SessionListProps) {
+  const listRef = useRef<HTMLDivElement>(null)
+  const isLoadingRef = useRef(false)
+  const hasMore = sessions.length < totalSessions
+
+  // 滚动加载更多
+  const handleScroll = useCallback(() => {
+    if (!listRef.current || !onLoadMore || !hasMore || isLoadingRef.current) return
+    
+    const { scrollTop, scrollHeight, clientHeight } = listRef.current
+    // 距离底部 100px 时触发加载
+    if (scrollHeight - scrollTop - clientHeight < 100) {
+      isLoadingRef.current = true
+      onLoadMore()
+      // 防抖：500ms 后重置
+      setTimeout(() => {
+        isLoadingRef.current = false
+      }, 500)
+    }
+  }, [onLoadMore, hasMore])
+
+  // 监听滚动事件
+  useEffect(() => {
+    const list = listRef.current
+    if (!list) return
+    
+    list.addEventListener('scroll', handleScroll)
+    return () => list.removeEventListener('scroll', handleScroll)
+  }, [handleScroll])
+
   return (
     <div className="w-72 bg-[var(--color-bg-secondary)] border-r border-[var(--color-border)] flex flex-col h-full">
       {/* 标题 */}
@@ -52,8 +92,8 @@ export default function SessionList({ sessions, selectedId, onSelect }: SessionL
         <span className="text-xs text-[var(--color-text-secondary)]">T10</span>
       </div>
 
-      {/* 会话列表 */}
-      <div className="flex-1 overflow-y-auto">
+      {/* 会话列表 - 支持滚动加载 */}
+      <div ref={listRef} className="flex-1 overflow-y-auto">
         {sessions.length === 0 ? (
           <div className="p-4 text-center text-[var(--color-text-secondary)] text-sm">
             暂无会话
@@ -104,11 +144,11 @@ export default function SessionList({ sessions, selectedId, onSelect }: SessionL
         )}
       </div>
 
-      {/* 统计信息 */}
-      <div className="px-4 py-3 border-t border-[var(--color-border)] text-xs text-[var(--color-text-secondary)]">
+      {/* 统计信息 - 固定在底部 */}
+      <div className="px-4 py-2 border-t border-[var(--color-border)] text-xs text-[var(--color-text-secondary)]">
         <div className="flex items-center justify-between">
-          <span>总会话数: {sessions.length}</span>
-          <span>运行中: {sessions.filter(s => s.status === 'running').length}</span>
+          <span>总会话数: {totalSessions || sessions.length}</span>
+          <span className="text-[var(--color-success)]">运行中: {runningSessions}</span>
         </div>
       </div>
     </div>

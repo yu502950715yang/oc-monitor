@@ -35,9 +35,16 @@ interface ApiState<T> {
   error: Error | null
 }
 
+// API response with pagination info
+interface SessionsResponse {
+  sessions: Session[]
+  total: number
+  running: number
+}
+
 // Hook for fetching session list
-export function useSessions() {
-  const [state, setState] = useState<ApiState<Session[]>>({
+export function useSessions(limit?: number) {
+  const [state, setState] = useState<ApiState<SessionsResponse | null>>({
     data: null,
     loading: true,
     error: null,
@@ -46,12 +53,12 @@ export function useSessions() {
   const fetchSessions = useCallback(async () => {
     setState(prev => ({ ...prev, loading: true, error: null }))
     try {
-      const result = await window.electronAPI.api.getSessions()
+      const result = await window.electronAPI.api.getSessions(limit)
       setState({ data: result, loading: false, error: null })
     } catch (err) {
       setState({ data: null, loading: false, error: err as Error })
     }
-  }, [])
+  }, [limit])
 
   useEffect(() => {
     fetchSessions()

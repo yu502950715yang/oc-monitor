@@ -14,12 +14,15 @@ import MCPHealth from './components/MCPHealth'
 function AppContent() {
   const { 
     sessions, 
+    totalSessions,
+    runningSessions,
     activities, 
     selectedSessionId, 
     activeView,
     setSelectedSession,
     setActiveView,
-    getSessionNodes
+    getSessionNodes,
+    loadMoreSessions
   } = useApp()
 
   // 计算所有 Skills（仅从工具调用中获取）
@@ -280,8 +283,11 @@ function AppContent() {
       {/* 左侧会话列表 */}
       <SessionList
         sessions={sessions}
+        totalSessions={totalSessions}
+        runningSessions={runningSessions}
         selectedId={selectedSessionId || undefined}
         onSelect={setSelectedSession}
+        onLoadMore={loadMoreSessions}
       />
 
       {/* 中间主区域 */}

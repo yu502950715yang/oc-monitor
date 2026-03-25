@@ -1,6 +1,7 @@
 import type { Hono } from "hono";
 import {
   getRootSessions,
+  getAllSessions,
   getSession,
   getMessagesForSession,
   getPartsForSession,
@@ -23,17 +24,29 @@ export function registerSessionRoutes(app: Hono) {
     return c.json(info);
   });
 
-  // Get all recent sessions
+  // Get all recent sessions (with pagination support)
   app.get("/api/sessions", async (c) => {
     if (!checkStorageExists()) {
       return c.json({
         error: "STORAGE_NOT_FOUND",
         message: "OpenCode storage directory does not exist. Please ensure OpenCode is installed.",
         sessions: [],
+        total: 0,
+        running: 0,
       });
     }
 
-    const sessions = await getRootSessions(MAX_SESSIONS_LIMIT);
+    const limit = c.req.query("limit");
+    const maxSessions = limit ? parseInt(limit, 10) : MAX_SESSIONS_LIMIT;
+
+    // 获取所有根会话用于统计
+    const allRootSessions = await getRootSessions(1000); // 获取足够多的数据用于统计
+    
+    // 计算运行中的会话数
+    const runningCount = allRootSessions.filter(s => s.status === 'running').length;
+    
+    // 限制返回数量
+    const sessions = allRootSessions.slice(0, maxSessions);
     const sessionList = sessions.map((s) => ({
       id: s.id,
       projectID: s.projectID,
@@ -44,7 +57,11 @@ export function registerSessionRoutes(app: Hono) {
       createdAt: s.createdAt.toISOString(),
     }));
 
-    return c.json(sessionList);
+    return c.json({
+      sessions: sessionList,
+      total: allRootSessions.length,
+      running: runningCount,
+    });
   });
 
   // Get single session by ID

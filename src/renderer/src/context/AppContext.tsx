@@ -8,6 +8,8 @@ import { usePolling } from '../hooks/usePolling'
 
 interface AppState {
   sessions: Session[]
+  totalSessions: number
+  runningSessions: number
   activities: Activity[]
   plans: Plan[]
   selectedSessionId: string | null
@@ -23,6 +25,7 @@ interface AppContextType extends AppState {
   getSessionNodes: () => SessionNode[]
   refresh: () => void
   refreshSessionTree: () => void  // 单独刷新活动树数据
+  loadMoreSessions: () => void  // 加载更多会话
 }
 
 const AppContext = createContext<AppContextType | null>(null)
@@ -40,13 +43,16 @@ function transformSessions(apiSessions: any[]): Session[] {
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [sessions, setSessions] = useState<Session[]>([])
+  const [totalSessions, setTotalSessions] = useState(0)
+  const [runningSessions, setRunningSessions] = useState(0)
   const [activities, setActivities] = useState<Activity[]>([])
   const [plans, setPlans] = useState<Plan[]>([])
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
   const [activeView, setActiveView] = useState<'stream' | 'tree' | 'dashboard'>('stream')
   const [cachedSessionTree, setCachedSessionTree] = useState<SessionTreeNode | null>(null)
+  const [sessionLimit, setSessionLimit] = useState(20)
 
-  const { data: apiSessions, loading: sessionsLoading, error: sessionsError, refetch: refetchSessions } = useSessions()
+  const { data: apiSessions, loading: sessionsLoading, error: sessionsError, refetch: refetchSessions } = useSessions(sessionLimit)
   const { data: apiPlan, loading: planLoading, error: planError, refetch: refetchPlan } = usePlan()
   const { data: apiActivity, loading: activityLoading, refetch: refetchActivity } = useActivity(selectedSessionId)
   const { data: sessionTree, loading: sessionTreeLoading, refetch: refetchSessionTree } = useSessionTree(selectedSessionId)
@@ -64,14 +70,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [sessionTree])
 
   useEffect(() => {
-    if (apiSessions) {
-      const transformed = transformSessions(apiSessions)
+    if (apiSessions && apiSessions.sessions) {
+      const transformed = transformSessions(apiSessions.sessions)
       setSessions(transformed)
+      setTotalSessions(apiSessions.total || 0)
+      setRunningSessions(apiSessions.running || 0)
       if (transformed.length > 0 && !selectedSessionId) {
         setSelectedSessionId(transformed[0].id)
       }
     }
   }, [apiSessions])
+
+  // 加载更多会话
+  const loadMoreSessions = useCallback(() => {
+    setSessionLimit(prev => prev + 20)
+  }, [])
 
   useEffect(() => {
     // 新的 API 响应格式: apiActivity 包含 messages, parts, all 等字段
@@ -342,6 +355,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     <AppContext.Provider
       value={{
         sessions,
+        totalSessions,
+        runningSessions,
         activities,
         plans,
         selectedSessionId,
@@ -354,6 +369,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         getSessionNodes,
         refresh,
         refreshSessionTree,
+        loadMoreSessions,
       }}
     >
       {children}
