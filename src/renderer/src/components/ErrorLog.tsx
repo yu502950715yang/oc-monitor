@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useApp } from '../context/AppContext'
+import { XCircle } from 'lucide-react'
 
 function formatRelativeTime(isoString: string): string {
   if (!isoString) return '未知'
@@ -42,16 +43,17 @@ export default function ErrorLog() {
     : errorActivities.filter(a => a.toolName === filterTool)
 
   return (
-    <div className="bg-[#161b22] rounded-lg border border-[#30363d] p-4">
+    <div className="bg-[var(--color-card)] rounded-xl border border-[var(--color-border)] p-6 shadow-lg">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-medium text-[#c9d1d9]">
+        <h3 className="text-lg font-semibold text-[var(--color-text-primary)] flex items-center gap-2">
+          <XCircle className="w-5 h-5 text-[var(--color-error)]" />
           错误日志
-          <span className="ml-2 text-xs text-[#f85149]">({errorActivities.length})</span>
+          <span className="ml-2 text-xs text-[var(--color-error)]">({errorActivities.length})</span>
         </h3>
         <select
           value={filterTool}
           onChange={(e) => setFilterTool(e.target.value)}
-          className="bg-[#21262d] text-[#c9d1d9] text-xs px-2 py-1 rounded border border-[#30363d]"
+          className="bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] text-xs px-2 py-1 rounded border border-[var(--color-border)]"
         >
           {toolNames.map(tool => (
             <option key={tool} value={tool}>
@@ -62,7 +64,8 @@ export default function ErrorLog() {
       </div>
 
       {filteredErrors.length === 0 ? (
-        <div className="text-center text-[#8b949e] py-8 text-sm">
+        <div className="text-center text-[var(--color-text-secondary)] py-8 text-sm">
+          <XCircle className="w-12 h-12 mx-auto mb-3 text-[var(--color-text-secondary)] opacity-50" />
           {errorActivities.length === 0 ? '暂无错误' : '无匹配错误'}
         </div>
       ) : (
@@ -70,44 +73,44 @@ export default function ErrorLog() {
           {filteredErrors.map(activity => (
             <div
               key={activity.id}
-              className="bg-[#21262d] rounded-lg border border-[#30363d] overflow-hidden"
+              className="bg-[var(--color-bg-tertiary)] rounded-lg border border-[var(--color-border)] overflow-hidden"
             >
               <div 
-                className="px-3 py-2 flex items-center justify-between cursor-pointer hover:bg-[#30363d]/50"
+                className="px-3 py-2 flex items-center justify-between cursor-pointer hover:bg-[var(--color-bg-hover)]/50"
                 onClick={() => setExpandedId(expandedId === activity.id ? null : activity.id)}
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-[#f85149] text-xs">❌</span>
-                  <span className="text-sm text-[#c9d1d9]">{activity.toolName}</span>
-                  <span className="text-xs text-[#8b949e]">{activity.content?.slice(0, 30)}</span>
+                  <XCircle className="w-3.5 h-3.5 text-[var(--color-error)]" />
+                  <span className="text-sm text-[var(--color-text-primary)]">{activity.toolName}</span>
+                  <span className="text-xs text-[var(--color-text-secondary)]">{activity.content?.slice(0, 30)}</span>
                 </div>
-                <span className="text-xs text-[#8b949e]">
+                <span className="text-xs text-[var(--color-text-secondary)]">
                   {formatRelativeTime(activity.timestamp)}
                 </span>
               </div>
               
               {expandedId === activity.id && (
-                <div className="px-3 py-2 border-t border-[#30363d] bg-[#161b22]">
+                <div className="px-3 py-2 border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
                   {activity.error && (
                     <div className="mb-2">
-                      <div className="text-xs text-[#8b949e] mb-1">错误信息</div>
-                      <pre className="text-xs text-[#f85149] bg-[#21262d] p-2 rounded overflow-x-auto whitespace-pre-wrap">
+                      <div className="text-xs text-[var(--color-text-secondary)] mb-1">错误信息</div>
+                      <pre className="text-xs text-[var(--color-error)] bg-[var(--color-bg-tertiary)] p-2 rounded overflow-x-auto whitespace-pre-wrap">
                         {activity.error}
                       </pre>
                     </div>
                   )}
                   {activity.input && (
                     <div className="mb-2">
-                      <div className="text-xs text-[#8b949e] mb-1">输入</div>
-                      <pre className="text-xs text-[#c9d1d9] bg-[#21262d] p-2 rounded overflow-x-auto whitespace-pre-wrap">
+                      <div className="text-xs text-[var(--color-text-secondary)] mb-1">输入</div>
+                      <pre className="text-xs text-[var(--color-text-primary)] bg-[var(--color-bg-tertiary)] p-2 rounded overflow-x-auto whitespace-pre-wrap">
                         {activity.input}
                       </pre>
                     </div>
                   )}
                   {activity.output && (
                     <div>
-                      <div className="text-xs text-[#8b949e] mb-1">输出</div>
-                      <pre className="text-xs text-[#c9d1d9] bg-[#21262d] p-2 rounded overflow-x-auto whitespace-pre-wrap">
+                      <div className="text-xs text-[var(--color-text-secondary)] mb-1">输出</div>
+                      <pre className="text-xs text-[var(--color-text-primary)] bg-[var(--color-bg-tertiary)] p-2 rounded overflow-x-auto whitespace-pre-wrap">
                         {activity.output}
                       </pre>
                     </div>

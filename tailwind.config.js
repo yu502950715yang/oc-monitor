@@ -16,6 +16,11 @@ export default {
         'success': '#238636',
         'warning': '#d29922',
         'error': '#f85149',
+        // StatsPanel colors
+        'stat-token': '#fbbf24',
+        'stat-tool': '#3b82f6',
+        'stat-skill': '#a855f7',
+        'stat-mcp': '#06b6d4',
       },
     },
   },

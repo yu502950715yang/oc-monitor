@@ -1,4 +1,9 @@
 import { useState, useCallback } from 'react'
+import { formatRelativeTime } from '@/utils/format'
+import { 
+  Terminal, FileText, CheckSquare, ArrowRightCircle, 
+  XCircle, Brain, ChevronDown, ChevronRight, Activity
+} from 'lucide-react'
 
 // Token信息接口
 export interface TokenInfo {
@@ -46,63 +51,36 @@ export interface Activity {
   
 }
 
-// 相对时间格式化函数
-function formatRelativeTime(isoString: string): string {
-  if (!isoString) return '未知'
-  
-  const date = new Date(isoString)
-  if (isNaN(date.getTime())) return '未知'
-  
-  const now = new Date()
-  const diffMs = now.getTime() - date.getTime()
-  const diffSec = Math.floor(diffMs / 1000)
-  const diffMin = Math.floor(diffSec / 60)
-
-  if (diffSec < 60) return '刚刚'
-  if (diffMin <= 5) return `${diffMin}分钟前`
-  // 超过5分钟显示具体时间
-  return date.toLocaleString('zh-CN', { 
-    month: 'short', 
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
-
 interface ActivityStreamProps {
   activities: Activity[]
 }
 
-// 工具类型对应的颜色
-const toolTypeColors: Record<string, { label: string; color: string; bg: string }> = {
-  read: { label: '读取', color: 'text-[#58a6ff]', bg: 'bg-[#58a6ff]/10' },
-  write: { label: '写入', color: 'text-[#3fb950]', bg: 'bg-[#3fb950]/10' },
-  edit: { label: '编辑', color: 'text-[#d29922]', bg: 'bg-[#d29922]/10' },
-  bash: { label: '运行', color: 'text-[#f85149]', bg: 'bg-[#f85149]/10' },
-  grep: { label: '搜索', color: 'text-[#a371f7]', bg: 'bg-[#a371f7]/10' },
-  glob: { label: '查找', color: 'text-[#79c0ff]', bg: 'bg-[#79c0ff]/10' },
-  skill: { label: '技能', color: 'text-[#a855f7]', bg: 'bg-[#a855f7]/10' },
-  task: { label: '委托', color: 'text-[#d2a8ff]', bg: 'bg-[#d2a8ff]/10' },
-  webfetch: { label: '获取', color: 'text-[#ffa657]', bg: 'bg-[#ffa657]/10' },
-  'context7_query-docs': { label: 'MCP', color: 'text-[#ff7b72]', bg: 'bg-[#ff7b72]/10' },
-  'context7_resolve-library-id': { label: 'MCP', color: 'text-[#ff7b72]', bg: 'bg-[#ff7b72]/10' },
-  'websearch_web_search_exa': { label: 'MCP', color: 'text-[#ff7b72]', bg: 'bg-[#ff7b72]/10' },
+// 工具类型对应的颜色 - 使用设计系统变量
+const toolTypeColors: Record<string, { label: string; color: string; bg: string; Icon: any }> = {
+  read: { label: '读取', color: 'text-[var(--color-info)]', bg: 'bg-[var(--color-info-bg)]', Icon: FileText },
+  write: { label: '写入', color: 'text-[var(--color-success)]', bg: 'bg-[var(--color-success-bg)]', Icon: FileText },
+  edit: { label: '编辑', color: 'text-[var(--color-warning)]', bg: 'bg-[var(--color-warning-bg)]', Icon: Terminal },
+  bash: { label: '运行', color: 'text-[var(--color-error)]', bg: 'bg-[var(--color-error-bg)]', Icon: Terminal },
+  grep: { label: '搜索', color: 'text-[#a371f7]', bg: 'bg-[#a371f7]/10', Icon: Terminal },
+  glob: { label: '查找', color: 'text-[#79c0ff]', bg: 'bg-[#79c0ff]/10', Icon: Terminal },
+  skill: { label: '技能', color: 'text-[#a855f7]', bg: 'bg-[#a855f7]/10', Icon: Brain },
+  task: { label: '委托', color: 'text-[#d2a8ff]', bg: 'bg-[#d2a8ff]/10', Icon: ArrowRightCircle },
+  webfetch: { label: '获取', color: 'text-[#ffa657]', bg: 'bg-[#ffa657]/10', Icon: Terminal },
+  'context7_query-docs': { label: 'MCP', color: 'text-[#ff7b72]', bg: 'bg-[#ff7b72]/10', Icon: Terminal },
+  'context7_resolve-library-id': { label: 'MCP', color: 'text-[#ff7b72]', bg: 'bg-[#ff7b72]/10', Icon: Terminal },
+  'websearch_web_search_exa': { label: 'MCP', color: 'text-[#ff7b72]', bg: 'bg-[#ff7b72]/10', Icon: Terminal },
 }
 
 const typeIconMap = {
-  tool: { label: '工具', color: 'text-[#a371f7]', bg: 'bg-[#a371f7]/10' },
-  message: { label: '消息', color: 'text-[#58a6ff]', bg: 'bg-[#58a6ff]/10' },
-  plan: { label: '计划', color: 'text-[#3fb950]', bg: 'bg-[#3fb950]/10' },
-  task: { label: '任务', color: 'text-[#d29922]', bg: 'bg-[#d29922]/10' },
-  error: { label: '错误', color: 'text-[#f85149]', bg: 'bg-[#f85149]/10' },
-  reasoning: { label: '推理', color: 'text-[#79c0ff]', bg: 'bg-[#79c0ff]/10' },
+  tool: { label: '工具', color: 'text-[var(--color-primary)]', bg: 'bg-[var(--color-primary-bg)]', Icon: Terminal },
+  message: { label: '消息', color: 'text-[var(--color-info)]', bg: 'bg-[var(--color-info-bg)]', Icon: FileText },
+  plan: { label: '计划', color: 'text-[var(--color-success)]', bg: 'bg-[var(--color-success-bg)]', Icon: CheckSquare },
+  task: { label: '任务', color: 'text-[var(--color-warning)]', bg: 'bg-[var(--color-warning-bg)]', Icon: ArrowRightCircle },
+  error: { label: '错误', color: 'text-[var(--color-error)]', bg: 'bg-[var(--color-error-bg)]', Icon: XCircle },
+  reasoning: { label: '推理', color: 'text-[#79c0ff]', bg: 'bg-[#79c0ff]/10', Icon: Brain },
 }
 
 export default function ActivityStream({ activities }: ActivityStreamProps) {
-  // 详细调试
-  const toolActivities = activities?.filter((a: any) => a.type === 'tool') || []
-  console.log('[ActivityStream] 总数:', activities?.length, '工具类型:', toolActivities.length, '前3个工具:', toolActivities.slice(0, 3).map(a => ({ id: a.id, summary: a.summary, type: a.type })))
-  
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
 
   const toggleExpand = useCallback((id: string) => {
@@ -118,21 +96,20 @@ export default function ActivityStream({ activities }: ActivityStreamProps) {
   }, [])
 
   return (
-    <div className="flex-1 bg-[#0d1117] flex flex-col min-h-0">
+    <div className="flex-1 bg-[var(--color-bg-primary)] flex flex-col min-h-0">
       {/* 标题 */}
-      <div className="px-4 py-3 border-b border-[#30363d] flex items-center justify-between flex-shrink-0">
-        <h2 className="font-medium text-[#c9d1d9]">活动流</h2>
+      <div className="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between flex-shrink-0">
+        <h2 className="font-medium text-[var(--color-text-primary)]">活动流</h2>
         <div className="flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-[#3fb950] animate-pulse"></span>
-          <span className="text-xs text-[#8b949e]">实时</span>
-          <span className="text-xs text-[#8b949e] ml-2">T11</span>
+          <span className="w-2 h-2 rounded-full bg-[var(--color-success)] animate-pulse"></span>
+          <span className="text-xs text-[var(--color-text-secondary)]">实时</span>
         </div>
       </div>
 
       {/* 活动列表 */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {activities.length === 0 ? (
-          <div className="text-center text-[#8b949e] text-sm py-8">
+          <div className="text-center text-[var(--color-text-secondary)] text-sm py-8">
             暂无活动
           </div>
         ) : (
@@ -146,6 +123,8 @@ export default function ActivityStream({ activities }: ActivityStreamProps) {
               }
             }
             
+            const TypeIcon = typeInfo.Icon || Activity
+            
             // 格式化耗时
             const formatDuration = (ms?: number) => {
               if (!ms) return null
@@ -156,21 +135,23 @@ export default function ActivityStream({ activities }: ActivityStreamProps) {
             
             // 判断是否可展开
             const canExpand = activity.input || activity.output || activity.reasoningContent
+            const isExpanded = expandedIds.has(activity.id)
             
             return (
               <div
                 key={activity.id}
-                className={`p-3 rounded-lg ${typeInfo.bg} border border-[#30363d] cursor-pointer hover:opacity-80 transition-opacity`}
+                className={`p-3 rounded-lg ${typeInfo.bg} border border-[var(--color-border)] cursor-pointer hover:opacity-80 transition-all duration-[var(--transition-base)]`}
                 onClick={() => toggleExpand(activity.id)}
               >
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
+                    <TypeIcon className={`w-3.5 h-3.5 ${typeInfo.color}`} />
                     <span className={`text-xs font-medium ${typeInfo.color}`}>
                       {typeInfo.label}
                     </span>
                     {/* 角色/智能体 */}
                     {activity.role && (
-                      <span className="text-xs text-[#8b949e]">
+                      <span className="text-xs text-[var(--color-text-secondary)]">
                         {activity.role === 'user' ? '用户' : activity.role === 'assistant' ? '助手' : activity.role}
                         {activity.agent && ` · ${activity.agent}`}
                       </span>
@@ -182,33 +163,35 @@ export default function ActivityStream({ activities }: ActivityStreamProps) {
                       </span>
                     )}
                     {activity.toolName && activity.type === 'tool' && (
-                      <span className="text-xs text-[#8b949e]">
+                      <span className="text-xs text-[var(--color-text-secondary)]">
                         · {activity.toolName}
                       </span>
                     )}
                     {activity.status && activity.type === 'tool' && (
                       <span className={`text-xs px-1.5 py-0.5 rounded ${
-                        activity.status === 'completed' ? 'bg-[#3fb950]/20 text-[#3fb950]' :
-                        activity.status === 'running' || activity.status === 'in_progress' ? 'bg-[#58a6ff]/20 text-[#58a6ff]' :
-                        activity.status === 'error' ? 'bg-[#f85149]/20 text-[#f85149]' :
-                        'bg-[#8b949e]/20 text-[#8b949e]'
+                        activity.status === 'completed' ? 'bg-[var(--color-success-bg)] text-[var(--color-success)]' :
+                        activity.status === 'running' || activity.status === 'in_progress' ? 'bg-[var(--color-info-bg)] text-[var(--color-info)]' :
+                        activity.status === 'error' ? 'bg-[var(--color-error-bg)] text-[var(--color-error)]' :
+                        'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]'
                       }`}>
                         {activity.status}
                       </span>
                     )}
                     {activity.sessionName && (
-                      <span className="text-xs text-[#8b949e]">
+                      <span className="text-xs text-[var(--color-text-secondary)]">
                         · {activity.sessionName}
                       </span>
                     )}
                   </div>
-                  <span className="text-xs text-[#8b949e] flex items-center gap-1">
+                  <span className="text-xs text-[var(--color-text-secondary)] flex items-center gap-1">
                     {formatDuration(activity.duration) && (
-                      <span className="text-[#d29922]">{formatDuration(activity.duration)}</span>
+                      <span className="text-[var(--color-warning)]">{formatDuration(activity.duration)}</span>
                     )}
                     {formatRelativeTime(activity.timestamp)}
                     {canExpand && (
-                      <span className="ml-1">{expandedIds.has(activity.id) ? '▼' : '▶'}</span>
+                      <span className="ml-1 transition-transform duration-[var(--transition-base)]">
+                        {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                      </span>
                     )}
                   </span>
                 </div>
@@ -216,46 +199,44 @@ export default function ActivityStream({ activities }: ActivityStreamProps) {
                 {activity.type === 'reasoning' && activity.reasoningContent ? (
                   <p className="text-sm text-[#79c0ff] italic break-all">{activity.reasoningContent.slice(0, 200)}{activity.reasoningContent.length > 200 ? '...' : ''}</p>
                 ) : (
-                  <p className="text-sm text-[#c9d1d9] break-all">{activity.summary || activity.content}</p>
+                  <p className="text-sm text-[var(--color-text-primary)] break-all">{activity.summary || activity.content}</p>
                 )}
-                {expandedIds.has(activity.id) && (
-                  <div className="mt-3 pt-3 border-t border-[#30363d]">
-                    {/* 推理内容详情 */}
-                    {activity.type === 'reasoning' && activity.reasoningContent && (
-                      <div className="mb-3">
-                        <div className="text-xs text-[#8b949e] mb-1">推理过程</div>
-                        <pre className="text-xs text-[#79c0ff] bg-[#161b22] p-2 rounded overflow-x-auto whitespace-pre-wrap italic">
-                          {activity.reasoningContent}
-                        </pre>
-                      </div>
-                    )}
-                    {/* 元信息 */}
-                    {(activity.role || activity.agent || activity.messageId) && (
-                      <div className="mb-3 text-xs text-[#8b949e] space-y-1">
-                        {activity.role && <div>角色: {activity.role}</div>}
-                        {activity.agent && <div>智能体: {activity.agent}</div>}
-                        {activity.messageId && <div>消息ID: {activity.messageId}</div>}
-                        {activity.duration && <div>耗时: {formatDuration(activity.duration)}</div>}
-                      </div>
-                    )}
-                    {activity.input && (
-                      <div className="mb-2">
-                        <div className="text-xs text-[#8b949e] mb-1">输入</div>
-                        <pre className="text-xs text-[#c9d1d9] bg-[#161b22] p-2 rounded overflow-x-auto whitespace-pre-wrap">
-                          {activity.input}
-                        </pre>
-                      </div>
-                    )}
-                    {activity.output && (
-                      <div>
-                        <div className="text-xs text-[#8b949e] mb-1">输出</div>
-                        <pre className="text-xs text-[#c9d1d9] bg-[#161b22] p-2 rounded overflow-x-auto whitespace-pre-wrap">
-                          {activity.output}
-                        </pre>
-                      </div>
-                    )}
-                  </div>
-                )}
+                <div className={`overflow-hidden transition-all duration-[var(--transition-base)] ${isExpanded ? 'mt-3 pt-3 border-t border-[var(--color-border)]' : 'max-h-0'}`}>
+                  {/* 推理内容详情 */}
+                  {activity.type === 'reasoning' && activity.reasoningContent && (
+                    <div className="mb-3">
+                      <div className="text-xs text-[var(--color-text-secondary)] mb-1">推理过程</div>
+                      <pre className="text-xs text-[#79c0ff] bg-[var(--color-bg-secondary)] p-2 rounded overflow-x-auto whitespace-pre-wrap italic">
+                        {activity.reasoningContent}
+                      </pre>
+                    </div>
+                  )}
+                  {/* 元信息 */}
+                  {(activity.role || activity.agent || activity.messageId) && (
+                    <div className="mb-3 text-xs text-[var(--color-text-secondary)] space-y-1">
+                      {activity.role && <div>角色: {activity.role}</div>}
+                      {activity.agent && <div>智能体: {activity.agent}</div>}
+                      {activity.messageId && <div>消息ID: {activity.messageId}</div>}
+                      {activity.duration && <div>耗时: {formatDuration(activity.duration)}</div>}
+                    </div>
+                  )}
+                  {activity.input && (
+                    <div className="mb-2">
+                      <div className="text-xs text-[var(--color-text-secondary)] mb-1">输入</div>
+                      <pre className="text-xs text-[var(--color-text-primary)] bg-[var(--color-bg-secondary)] p-2 rounded overflow-x-auto whitespace-pre-wrap">
+                        {activity.input}
+                      </pre>
+                    </div>
+                  )}
+                  {activity.output && (
+                    <div>
+                      <div className="text-xs text-[var(--color-text-secondary)] mb-1">输出</div>
+                      <pre className="text-xs text-[var(--color-text-primary)] bg-[var(--color-bg-secondary)] p-2 rounded overflow-x-auto whitespace-pre-wrap">
+                        {activity.output}
+                      </pre>
+                    </div>
+                  )}
+                </div>
               </div>
             )
           })

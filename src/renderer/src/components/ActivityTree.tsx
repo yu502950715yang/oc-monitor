@@ -8,6 +8,7 @@ import {
   Position,
   type Connection,
 } from '@xyflow/react'
+import { RefreshCw, X, Lightbulb } from 'lucide-react'
 import '@xyflow/react/dist/style.css'
 import { useApp } from '../context/AppContext'
 
@@ -59,10 +60,10 @@ interface ActivityTreeProps {
 }
 
 const nodeColors = {
-  running: { bg: '#3fb950', text: '#ffffff' },
-  waiting: { bg: '#d29922', text: '#ffffff' },
-  completed: { bg: '#58a6ff', text: '#ffffff' },
-  error: { bg: '#f85149', text: '#ffffff' },
+  running: { bg: 'var(--color-success)', text: '#ffffff' },
+  waiting: { bg: 'var(--color-warning)', text: '#ffffff' },
+  completed: { bg: 'var(--color-info)', text: '#ffffff' },
+  error: { bg: 'var(--color-error)', text: '#ffffff' },
 }
 
 function SessionNodeComponent({ data }: { data: SessionNode }) {
@@ -93,27 +94,27 @@ function SessionNodeComponent({ data }: { data: SessionNode }) {
   // Portal 渲染的 Tooltip - 避免被遮挡
   const tooltipPortal = showTooltip ? createPortal(
     <div 
-      className="fixed z-[9999] w-56 max-w-[280px] bg-[#161b22] border border-[#30363d] rounded-lg p-3 shadow-lg"
+      className="fixed z-[9999] w-56 max-w-[280px] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg p-3 shadow-lg"
       style={{ 
         left: tooltipPosition.x, 
         top: tooltipPosition.y 
       }}
     >
       <div className="text-xs space-y-1">
-        <div className="font-medium text-[#c9d1d9] truncate">{data.name}</div>
-        <div className="text-[#8b949e]">
+        <div className="font-medium text-[var(--color-text-primary)] truncate">{data.name}</div>
+        <div className="text-[var(--color-text-secondary)]">
           状态: <span style={{ color: colors.bg }}>{data.status === 'running' ? '运行中' : data.status === 'waiting' ? '等待中' : data.status === 'completed' ? '已完成' : '错误'}</span>
         </div>
         {data.projectID && (
-          <div className="text-[#8b949e] break-all">项目: {data.projectID}</div>
+          <div className="text-[var(--color-text-secondary)] break-all">项目: {data.projectID}</div>
         )}
         {data.createdAt && (
-          <div className="text-[#8b949e]">创建: {formatDateTime(data.createdAt)}</div>
+          <div className="text-[var(--color-text-secondary)]">创建: {formatDateTime(data.createdAt)}</div>
         )}
         {data.updatedAt && (
-          <div className="text-[#8b949e]">更新: {formatDateTime(data.updatedAt)}</div>
+          <div className="text-[var(--color-text-secondary)]">更新: {formatDateTime(data.updatedAt)}</div>
         )}
-        <div className="text-[#8b949e] break-all">ID: {data.id}</div>
+        <div className="text-[var(--color-text-secondary)] break-all">ID: {data.id}</div>
       </div>
     </div>,
     document.body
@@ -129,15 +130,15 @@ function SessionNodeComponent({ data }: { data: SessionNode }) {
         onMouseLeave={() => setShowTooltip(false)}
       >
         {/* 连接线 Handle */}
-        <Handle type="target" position={Position.Left} style={{ background: '#30363d' }} />
+        <Handle type="target" position={Position.Left} style={{ background: 'var(--color-border)' }} />
         
         <div className="px-3 py-2 rounded-lg border-2 min-w-[140px] text-center"
           style={{
-            backgroundColor: '#21262d',
+            backgroundColor: 'var(--color-bg-tertiary)',
             borderColor: colors.bg,
           }}
         >
-          <div className="text-sm font-medium text-[#c9d1d9] truncate max-w-[140px]" title={data.name}>
+          <div className="text-sm font-medium text-[var(--color-text-primary)] truncate max-w-[140px]" title={data.name}>
             {data.name}
           </div>
           <div className="text-xs mt-1" style={{ color: colors.bg }}>
@@ -147,13 +148,13 @@ function SessionNodeComponent({ data }: { data: SessionNode }) {
           </div>
           {/* 显示相对时间 */}
           {data.updatedAt && (
-            <div className="text-[10px] text-[#8b949e] mt-1">
+            <div className="text-[10px] text-[var(--color-text-secondary)] mt-1">
               {formatRelativeTime(data.updatedAt)}
             </div>
           )}
         </div>
         
-        <Handle type="source" position={Position.Right} style={{ background: '#30363d' }} />
+        <Handle type="source" position={Position.Right} style={{ background: 'var(--color-border)' }} />
       </div>
     </>
   )
@@ -217,7 +218,7 @@ export default function ActivityTree({ sessions }: ActivityTreeProps) {
       source: session.parentId!,
       target: session.id,
       type: 'smoothstep',
-      style: { stroke: '#30363d', strokeWidth: 2 },
+      style: { stroke: 'var(--color-border)', strokeWidth: 2 },
       animated: session.status === 'running',
     })) as any, [sessions])
 
@@ -248,21 +249,22 @@ export default function ActivityTree({ sessions }: ActivityTreeProps) {
   
   if (showEmpty) {
     return (
-      <div className="flex-1 bg-[#0d1117] flex flex-col h-full overflow-hidden">
-        <div className="px-4 py-3 border-b border-[#30363d] flex items-center justify-between flex-shrink-0">
-          <h2 className="font-medium text-[#c9d1d9]">活动树</h2>
+      <div className="flex-1 bg-[var(--color-bg-primary)] flex flex-col h-full overflow-hidden">
+        <div className="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between flex-shrink-0">
+          <h2 className="font-medium text-[var(--color-text-primary)]">活动树</h2>
           <div className="flex items-center gap-2">
             <button
               onClick={handleRefresh}
               disabled={isRefreshing}
-              className="text-xs px-2 py-1 rounded bg-[#21262d] hover:bg-[#30363d] text-[#c9d1d9] disabled:opacity-50 transition-colors"
+              className="text-xs px-2 py-1 rounded bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-border)] text-[var(--color-text-primary)] disabled:opacity-50 transition-colors flex items-center gap-1"
             >
-              {isRefreshing ? '刷新中...' : '🔄 刷新'}
+              <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+              {isRefreshing ? '刷新中...' : '刷新'}
             </button>
-            <span className="text-xs text-[#8b949e]">T13</span>
+            <span className="text-xs text-[var(--color-text-secondary)]">T13</span>
           </div>
         </div>
-        <div className="flex-1 flex items-center justify-center text-[#8b949e] text-sm">
+        <div className="flex-1 flex items-center justify-center text-[var(--color-text-secondary)] text-sm">
           暂无会话数据
         </div>
       </div>
@@ -270,19 +272,20 @@ export default function ActivityTree({ sessions }: ActivityTreeProps) {
   }
 
   return (
-    <div className="flex-1 bg-[#0d1117] flex flex-col h-full overflow-hidden">
+    <div className="flex-1 bg-[var(--color-bg-primary)] flex flex-col h-full overflow-hidden">
       {/* 标题 */}
-      <div className="px-4 py-3 border-b border-[#30363d] flex items-center justify-between flex-shrink-0">
-        <h2 className="font-medium text-[#c9d1d9]">活动树</h2>
+      <div className="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between flex-shrink-0">
+        <h2 className="font-medium text-[var(--color-text-primary)]">活动树</h2>
         <div className="flex items-center gap-2">
           <button
             onClick={handleRefresh}
             disabled={isRefreshing}
-            className="text-xs px-2 py-1 rounded bg-[#21262d] hover:bg-[#30363d] text-[#c9d1d9] disabled:opacity-50 transition-colors"
+            className="text-xs px-2 py-1 rounded bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-border)] text-[var(--color-text-primary)] disabled:opacity-50 transition-colors flex items-center gap-1"
           >
-            {isRefreshing ? '刷新中...' : '🔄 刷新'}
+            <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+            {isRefreshing ? '刷新中...' : '刷新'}
           </button>
-          <span className="text-xs text-[#8b949e]">T13</span>
+          <span className="text-xs text-[var(--color-text-secondary)]">T13</span>
         </div>
       </div>
 
@@ -304,12 +307,12 @@ export default function ActivityTree({ sessions }: ActivityTreeProps) {
             attributionPosition="bottom-left"
             proOptions={{ hideAttribution: true }}
           >
-            <Background color="#30363d" gap={20} />
+            <Background color="var(--color-border)" gap={20} />
             <Controls 
               style={{ 
-                backgroundColor: '#21262d', 
-                borderColor: '#30363d',
-                fill: '#c9d1d9'
+                backgroundColor: 'var(--color-bg-tertiary)', 
+                borderColor: 'var(--color-border)',
+                fill: 'var(--color-text-primary)'
               }} 
             />
           </ReactFlow>
@@ -317,48 +320,49 @@ export default function ActivityTree({ sessions }: ActivityTreeProps) {
         
         {/* 活动详情面板 */}
         {selectedNode && (
-          <div className="w-80 border-l border-[#30363d] bg-[#161b22] flex flex-col">
-            <div className="px-4 py-3 border-b border-[#30363d] flex items-center justify-between">
-              <h3 className="font-medium text-[#c9d1d9]">会话详情</h3>
+          <div className="w-80 border-l border-[var(--color-border)] bg-[var(--color-bg-secondary)] flex flex-col">
+            <div className="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between">
+              <h3 className="font-medium text-[var(--color-text-primary)]">会话详情</h3>
               <button 
                 onClick={closePanel}
-                className="text-[#8b949e] hover:text-[#c9d1d9] text-sm"
+                className="text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] text-sm"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               <div className="text-sm">
-                <div className="text-[#8b949e] mb-1">会话名称</div>
-                <div className="text-[#c9d1d9] font-medium">{selectedNode.name}</div>
+                <div className="text-[var(--color-text-secondary)] mb-1">会话名称</div>
+                <div className="text-[var(--color-text-primary)] font-medium">{selectedNode.name}</div>
               </div>
               <div className="text-sm">
-                <div className="text-[#8b949e] mb-1">状态</div>
-                <div className={selectedNode.status === 'running' ? 'text-[#3fb950]' : selectedNode.status === 'waiting' ? 'text-[#d29922]' : selectedNode.status === 'completed' ? 'text-[#58a6ff]' : 'text-[#f85149]'}>
+                <div className="text-[var(--color-text-secondary)] mb-1">状态</div>
+                <div className={selectedNode.status === 'running' ? 'text-[var(--color-success)]' : selectedNode.status === 'waiting' ? 'text-[var(--color-warning)]' : selectedNode.status === 'completed' ? 'text-[var(--color-info)]' : 'text-[var(--color-error)]'}>
                   {selectedNode.status === 'running' ? '运行中' : selectedNode.status === 'waiting' ? '等待中' : selectedNode.status === 'completed' ? '已完成' : '错误'}
                 </div>
               </div>
               {selectedNode.projectID && (
                 <div className="text-sm">
-                  <div className="text-[#8b949e] mb-1">项目ID</div>
-                  <div className="text-[#c9d1d9]">{selectedNode.projectID}</div>
+                  <div className="text-[var(--color-text-secondary)] mb-1">项目ID</div>
+                  <div className="text-[var(--color-text-primary)]">{selectedNode.projectID}</div>
                 </div>
               )}
               <div className="text-sm">
-                <div className="text-[#8b949e] mb-1">创建时间</div>
-                <div className="text-[#c9d1d9]">{formatDateTime(selectedNode.createdAt)}</div>
+                <div className="text-[var(--color-text-secondary)] mb-1">创建时间</div>
+                <div className="text-[var(--color-text-primary)]">{formatDateTime(selectedNode.createdAt)}</div>
               </div>
               <div className="text-sm">
-                <div className="text-[#8b949e] mb-1">更新时间</div>
-                <div className="text-[#c9d1d9]">{formatDateTime(selectedNode.updatedAt)}</div>
+                <div className="text-[var(--color-text-secondary)] mb-1">更新时间</div>
+                <div className="text-[var(--color-text-primary)]">{formatDateTime(selectedNode.updatedAt)}</div>
               </div>
               <div className="text-sm">
-                <div className="text-[#8b949e] mb-1">会话ID</div>
-                <div className="text-[#c9d1d9] text-xs break-all">{selectedNode.id}</div>
+                <div className="text-[var(--color-text-secondary)] mb-1">会话ID</div>
+                <div className="text-[var(--color-text-primary)] text-xs break-all">{selectedNode.id}</div>
               </div>
-              <div className="mt-4 p-3 bg-[#21262d] rounded-lg">
-                <div className="text-xs text-[#8b949e]">
-                  💡 点击会话节点可查看详情，要查看该会话的活动流，请在左侧"活动流"视图中选择对应会话。
+              <div className="mt-4 p-3 bg-[var(--color-bg-tertiary)] rounded-lg">
+                <div className="flex items-start gap-2 text-xs text-[var(--color-text-secondary)]">
+                  <Lightbulb className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+                  <span>点击会话节点可查看详情，要查看该会话的活动流，请在左侧"活动流"视图中选择对应会话。</span>
                 </div>
               </div>
             </div>
