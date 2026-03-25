@@ -115,6 +115,17 @@ async function initSqlite(): Promise<boolean> {
     if (existsSync(dbPath)) {
       const fileBuffer = readFileSync(dbPath);
       db = new SQL.Database(fileBuffer);
+      
+      // 启用 WAL 模式，允许并发读写
+      try {
+        db.run('PRAGMA journal_mode=WAL');
+        db.run('PRAGMA busy_timeout=5000');
+        db.run('PRAGMA synchronous=NORMAL');
+        log.info("[storage] WAL mode enabled");
+      } catch (e) {
+        log.warn("[storage] Failed to enable WAL mode:", e);
+      }
+      
       sqlJsInitialized = true;
       log.info("[storage] SQLite database loaded successfully");
       return true;
@@ -484,6 +495,16 @@ export async function reloadDbIfChanged(): Promise<boolean> {
       const SQL = await initSqlJs();
       const fileBuffer = readFileSync(dbPath);
       db = new SQL.Database(fileBuffer);
+      
+      // 启用 WAL 模式，允许并发读写
+      try {
+        db.run('PRAGMA journal_mode=WAL');
+        db.run('PRAGMA busy_timeout=5000');
+        db.run('PRAGMA synchronous=NORMAL');
+      } catch (e) {
+        log.warn("[storage] Failed to enable WAL mode:", e);
+      }
+      
       lastDbFileMtime = currentMtime;
       
       log.info(`[storage] Database reloaded successfully`);
