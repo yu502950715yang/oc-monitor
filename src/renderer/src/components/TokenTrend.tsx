@@ -48,7 +48,7 @@ export default function TokenTrend() {
           Token消耗趋势
         </h3>
         <span className="text-xs text-[var(--color-text-secondary)] bg-[var(--color-bg-tertiary)] px-3 py-1 rounded-full">
-          {tokenData.length} 条记录
+          最近 {tokenData.length} 条记录
         </span>
       </div>
 
