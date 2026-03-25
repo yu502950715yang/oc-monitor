@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts'
 import { useApp } from '../context/AppContext'
+import { TrendingUp, BarChart3 } from 'lucide-react'
 
 export default function TokenTrend() {
   const { activities } = useApp()
@@ -30,13 +31,13 @@ export default function TokenTrend() {
   const totalTokens = tokenData.reduce((a, b) => a + b.total, 0)
 
   return (
-    <div className="bg-gradient-to-br from-[#161b22] to-[#1c2128] rounded-xl border border-[#30363d] p-6 shadow-lg flex flex-col h-full">
+    <div className="bg-[var(--color-card)] rounded-xl border border-[var(--color-border)] p-6 shadow-lg flex flex-col h-full">
       <div className="flex items-center justify-between mb-4 flex-shrink-0">
-        <h3 className="text-lg font-semibold text-[#c9d1d9] flex items-center gap-2">
-          <span className="w-1 h-5 bg-[#58a6ff] rounded-full"></span>
+        <h3 className="text-lg font-semibold text-[var(--color-text-primary)] flex items-center gap-2">
+          <BarChart3 className="w-5 h-5 text-[var(--color-accent-blue)]" />
           Token消耗趋势
         </h3>
-        <span className="text-xs text-[#8b949e] bg-[#21262d] px-3 py-1 rounded-full">
+        <span className="text-xs text-[var(--color-text-secondary)] bg-[var(--color-bg-tertiary)] px-3 py-1 rounded-full">
           {tokenData.length} 条记录
         </span>
       </div>
@@ -44,9 +45,9 @@ export default function TokenTrend() {
       {tokenData.length === 0 ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <div className="text-4xl mb-3 opacity-50">📊</div>
-            <div className="text-[#8b949e]">暂无Token数据</div>
-            <div className="text-xs text-[#6e7681] mt-1">Token数据需要在API增强后获取</div>
+            <TrendingUp className="w-12 h-12 mx-auto mb-3 text-[var(--color-text-secondary)] opacity-50" />
+            <div className="text-[var(--color-text-secondary)]">暂无Token数据</div>
+            <div className="text-xs text-[var(--color-text-muted)] mt-1">Token数据需要在API增强后获取</div>
           </div>
         </div>
       ) : (
@@ -72,18 +73,18 @@ export default function TokenTrend() {
                     <stop offset="95%" stopColor="#f85149" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <XAxis dataKey="time" stroke="#6e7681" fontSize={10} tickLine={false} axisLine={false} />
-                <YAxis stroke="#6e7681" fontSize={10} tickLine={false} axisLine={false} />
+<XAxis dataKey="time" stroke="var(--color-text-muted)" fontSize={10} tickLine={false} axisLine={false} />
+                <YAxis stroke="var(--color-text-muted)" fontSize={10} tickLine={false} axisLine={false} />
                 <Tooltip
                   contentStyle={{
-                    backgroundColor: '#161b22',
-                    border: '1px solid #30363d',
+                    backgroundColor: 'var(--color-bg-secondary)',
+                    border: '1px solid var(--color-border)',
                     borderRadius: '8px',
                     boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                }}
-                labelStyle={{ color: '#c9d1d9', fontWeight: 600 }}
-                itemStyle={{ fontSize: 12 }}
-              />
+                  }}
+                  labelStyle={{ color: 'var(--color-text-primary)', fontWeight: 600 }}
+                  itemStyle={{ color: 'var(--color-text-secondary)', fontSize: 12 }}
+                />
               <Area type="monotone" dataKey="total" stackId="1" stroke="#58a6ff" fill="url(#colorTotal)" name="总Token" strokeWidth={2} />
               <Area type="monotone" dataKey="input" stackId="2" stroke="#3fb950" fill="url(#colorInput)" name="输入" strokeWidth={2} />
               <Area type="monotone" dataKey="output" stackId="3" stroke="#d29922" fill="url(#colorOutput)" name="输出" strokeWidth={2} />
@@ -94,25 +95,25 @@ export default function TokenTrend() {
 
           {/* 统计摘要 */}
           <div className="mt-4 grid grid-cols-5 gap-3 flex-shrink-0">
-            <div className="bg-gradient-to-br from-[#58a6ff]/10 to-[#58a6ff]/5 rounded-xl p-3 border border-[#58a6ff]/20">
-              <div className="text-xs text-[#8b949e] mb-1">总Token</div>
-              <div className="text-lg font-bold text-[#58a6ff]">{totalTokens.toLocaleString()}</div>
+            <div className="relative overflow-hidden bg-[var(--color-bg-tertiary)] rounded-xl p-3 border border-[var(--color-border)] hover:border-[var(--color-accent-blue)]/40 transition-all duration-300">
+              <div className="text-xs text-[var(--color-text-secondary)] mb-1">总Token</div>
+              <div className="text-lg font-bold text-[var(--color-accent-blue)]">{totalTokens.toLocaleString()}</div>
             </div>
-            <div className="bg-gradient-to-br from-[#3fb950]/10 to-[#3fb950]/5 rounded-xl p-3 border border-[#3fb950]/20">
-              <div className="text-xs text-[#8b949e] mb-1">输入</div>
-              <div className="text-lg font-bold text-[#3fb950]">{tokenData.reduce((s, d) => s + d.input, 0).toLocaleString()}</div>
+            <div className="relative overflow-hidden bg-[var(--color-bg-tertiary)] rounded-xl p-3 border border-[var(--color-border)] hover:border-[var(--color-success)]/40 transition-all duration-300">
+              <div className="text-xs text-[var(--color-text-secondary)] mb-1">输入</div>
+              <div className="text-lg font-bold text-[var(--color-success)]">{tokenData.reduce((s, d) => s + d.input, 0).toLocaleString()}</div>
             </div>
-            <div className="bg-gradient-to-br from-[#d29922]/10 to-[#d29922]/5 rounded-xl p-3 border border-[#d29922]/20">
-              <div className="text-xs text-[#8b949e] mb-1">输出</div>
-              <div className="text-lg font-bold text-[#d29922]">{tokenData.reduce((s, d) => s + d.output, 0).toLocaleString()}</div>
+            <div className="relative overflow-hidden bg-[var(--color-bg-tertiary)] rounded-xl p-3 border border-[var(--color-border)] hover:border-[var(--color-accent-yellow)]/40 transition-all duration-300">
+              <div className="text-xs text-[var(--color-text-secondary)] mb-1">输出</div>
+              <div className="text-lg font-bold text-[var(--color-accent-yellow)]">{tokenData.reduce((s, d) => s + d.output, 0).toLocaleString()}</div>
             </div>
-            <div className="bg-gradient-to-br from-[#f85149]/10 to-[#f85149]/5 rounded-xl p-3 border border-[#f85149]/20">
-              <div className="text-xs text-[#8b949e] mb-1">推理</div>
-              <div className="text-lg font-bold text-[#f85149]">{tokenData.reduce((s, d) => s + d.reasoning, 0).toLocaleString()}</div>
+            <div className="relative overflow-hidden bg-[var(--color-bg-tertiary)] rounded-xl p-3 border border-[var(--color-border)] hover:border-[var(--color-error)]/40 transition-all duration-300">
+              <div className="text-xs text-[var(--color-text-secondary)] mb-1">推理</div>
+              <div className="text-lg font-bold text-[var(--color-error)]">{tokenData.reduce((s, d) => s + d.reasoning, 0).toLocaleString()}</div>
             </div>
-            <div className="bg-gradient-to-br from-[#a371f7]/10 to-[#a371f7]/5 rounded-xl p-3 border border-[#a371f7]/20">
-              <div className="text-xs text-[#8b949e] mb-1">缓存</div>
-              <div className="text-lg font-bold text-[#a371f7]">{tokenData.reduce((s, d) => s + d.cache, 0).toLocaleString()}</div>
+            <div className="relative overflow-hidden bg-[var(--color-bg-tertiary)] rounded-xl p-3 border border-[var(--color-border)] hover:border-[var(--color-accent-purple)]/40 transition-all duration-300">
+              <div className="text-xs text-[var(--color-text-secondary)] mb-1">缓存</div>
+              <div className="text-lg font-bold text-[var(--color-accent-purple)]">{tokenData.reduce((s, d) => s + d.cache, 0).toLocaleString()}</div>
             </div>
           </div>
         </div>

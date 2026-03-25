@@ -1,0 +1,277 @@
+/**
+ * 设计系统 CSS 变量
+ * Design Tokens - 基于语义化命名的一致性设计系统
+ */
+
+/* ==================== 间距系统 ==================== */
+:root {
+  --space-xs: 0.25rem;   /* 4px */
+  --space-sm: 0.5rem;    /* 8px */
+  --space-md: 1rem;      /* 16px */
+  --space-lg: 1.5rem;    /* 24px */
+  --space-xl: 2rem;      /* 32px */
+  --space-2xl: 3rem;     /* 48px */
+  --space-3xl: 4rem;     /* 64px */
+}
+
+/* ==================== 圆角系统 ==================== */
+:root {
+  --radius-sm: 0.25rem;  /* 4px */
+  --radius-md: 0.5rem;   /* 8px */
+  --radius-lg: 0.75rem;  /* 12px */
+  --radius-xl: 1rem;     /* 16px */
+  --radius-full: 9999px;
+}
+
+/* ==================== 深色主题 (默认) ==================== */
+:root,
+[data-theme="dark"] {
+  /* 背景色 */
+  --color-bg-primary: #0d1117;
+  --color-bg-secondary: #161b22;
+  --color-bg-tertiary: #21262d;
+  --color-bg-elevated: #30363d;
+
+  /* 文字色 */
+  --color-text-primary: #c9d1d9;
+  --color-text-secondary: #8b949e;
+  --color-text-muted: #6e7681;
+  --color-text-link: #58a6ff;
+
+  /* 边框色 */
+  --color-border: #30363d;
+  --color-border-muted: #21262d;
+
+  /* 语义色 - 品牌 */
+  --color-primary: #58a6ff;
+  --color-primary-hover: #79b8ff;
+  --color-primary-active: #388bfd;
+
+  /* 语义色 - 状态 */
+  --color-success: #3fb950;
+  --color-success-bg: rgba(63, 185, 80, 0.15);
+  --color-warning: #d29922;
+  --color-warning-bg: rgba(210, 153, 34, 0.15);
+  --color-error: #f85149;
+  --color-error-bg: rgba(248, 81, 73, 0.15);
+  --color-info: #58a6ff;
+  --color-info-bg: rgba(88, 166, 255, 0.15);
+
+  /* 选中状态 */
+  --color-selection: #388bfd;
+
+  /* 强调色 - 用于统计卡片和装饰 */
+  --color-accent-yellow: #e3b341;
+  --color-accent-yellow-bg: rgba(227, 179, 65, 0.15);
+  --color-accent-blue: #58a6ff;
+  --color-accent-blue-bg: rgba(88, 166, 255, 0.15);
+  --color-accent-purple: #a371f7;
+  --color-accent-purple-bg: rgba(163, 113, 247, 0.15);
+  --color-accent-cyan: #39d2c0;
+  --color-accent-cyan-bg: rgba(57, 210, 192, 0.15);
+}
+
+/* ==================== 浅色主题 ==================== */
+[data-theme="light"] {
+  /* 背景色 */
+  --color-bg-primary: #ffffff;
+  --color-bg-secondary: #f6f8fa;
+  --color-bg-tertiary: #eaeef2;
+  --color-bg-elevated: #ffffff;
+
+  /* 文字色 */
+  --color-text-primary: #24292f;
+  --color-text-secondary: #57606a;
+  --color-text-muted: #8c959f;
+  --color-text-link: #0969da;
+
+  /* 边框色 */
+  --color-border: #d0d7de;
+  --color-border-muted: #eaeef2;
+
+  /* 语义色 - 品牌 */
+  --color-primary: #0969da;
+  --color-primary-hover: #0550ae;
+  --color-primary-active: #0a3069;
+
+  /* 语义色 - 状态 */
+  --color-success: #1a7f37;
+  --color-success-bg: rgba(26, 127, 55, 0.1);
+  --color-warning: #9a6700;
+  --color-warning-bg: rgba(154, 103, 0, 0.1);
+  --color-error: #cf222e;
+  --color-error-bg: rgba(207, 34, 46, 0.1);
+  --color-info: #0969da;
+  --color-info-bg: rgba(9, 105, 218, 0.1);
+
+  /* 选中状态 */
+  --color-selection: #0969da;
+
+  /* 强调色 - 用于统计卡片和装饰 */
+  --color-accent-yellow: #bf8700;
+  --color-accent-yellow-bg: rgba(191, 135, 0, 0.1);
+  --color-accent-blue: #0969da;
+  --color-accent-blue-bg: rgba(9, 105, 218, 0.1);
+  --color-accent-purple: #8250df;
+  --color-accent-purple-bg: rgba(130, 80, 223, 0.1);
+  --color-accent-cyan: #0d7d6f;
+  --color-accent-cyan-bg: rgba(13, 125, 111, 0.1);
+}
+
+/* ==================== 过渡动画 ==================== */
+:root {
+  /* 过渡时间 */
+  --transition-fast: 150ms ease-in-out;
+  --transition-base: 200ms ease-in-out;
+  --transition-slow: 300ms ease-in-out;
+
+  /* 过渡属性 */
+  --transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+  --transition-property-colors: background-color, border-color, color, fill, stroke;
+  --transition-property-opacity: opacity;
+  --transition-property-transform: transform;
+}
+
+/* ==================== 阴影系统 ==================== */
+:root {
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+
+  /* 深色主题特定阴影 */
+  --shadow-dark-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-dark-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4), 0 2px 4px -1px rgba(0, 0, 0, 0.3);
+  --shadow-dark-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+}
+
+/* 浅色主题阴影 */
+[data-theme="light"] {
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-card-hover: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-elevated: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+/* ==================== 骨架屏动画 ==================== */
+@keyframes skeleton-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@keyframes skeleton-wave {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+:root {
+  --skeleton-duration: 1.5s;
+  --skeleton-ease: ease-in-out;
+}
+
+/* 骨架屏基础样式 */
+.skeleton {
+  background-color: var(--color-bg-tertiary);
+  animation: skeleton-pulse var(--skeleton-duration) var(--skeleton-ease) infinite;
+  border-radius: var(--radius-sm);
+}
+
+/* 骨架屏波浪效果 (可选) */
+.skeleton-wave::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.05),
+    transparent
+  );
+  animation: skeleton-wave 1.5s ease-in-out infinite;
+}
+
+/* ==================== 按钮状态 ==================== */
+:root {
+  /* 按钮透明度 */
+  --button-disabled-opacity: 0.5;
+  --button-focus-ring: 0 0 0 2px var(--color-bg-primary), 0 0 0 4px var(--color-primary);
+}
+
+/* ==================== 字体系统 ==================== */
+:root {
+  /* 字体栈 */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+  --font-mono: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace;
+
+  /* 字号 */
+  --text-xs: 0.75rem;     /* 12px */
+  --text-sm: 0.875rem;    /* 14px */
+  --text-base: 1rem;      /* 16px */
+  --text-lg: 1.125rem;    /* 18px */
+  --text-xl: 1.25rem;     /* 20px */
+  --text-2xl: 1.5rem;     /* 24px */
+  --text-3xl: 1.875rem;   /* 30px */
+
+  /* 行高 */
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+
+  /* 字重 */
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+}
+
+/* ==================== 层级系统 ==================== */
+:root {
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-modal: 300;
+  --z-popover: 400;
+  --z-tooltip: 500;
+}
+
+/* ==================== 减少动画支持 ==================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .skeleton {
+    animation: none;
+    background-color: var(--color-bg-tertiary);
+  }
+}
+
+/* ==================== 焦点可见性 ==================== */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--button-focus-ring);
+}
+
+/* ==================== 选中文字样式 ==================== */
+::selection {
+  background-color: var(--color-selection);
+  color: #ffffff;
+}
+
+[data-theme="light"] ::selection {
+  color: #ffffff;
+}

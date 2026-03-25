@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { useApp } from '../context/AppContext'
+import { Wrench, BarChart3 } from 'lucide-react'
 
 const COLORS = ['#58a6ff', '#3fb950', '#d29922', '#f85149', '#a371f7', '#ff7b72', '#79c0ff']
 
@@ -55,17 +56,17 @@ export default function ToolPerformance() {
   const toolNames = ['all', ...toolStats.map(t => t.toolFull)]
 
   return (
-    <div className="bg-gradient-to-br from-[#161b22] to-[#1c2128] rounded-xl border border-[#30363d] p-6 shadow-lg">
+    <div className="bg-[var(--color-card)] rounded-xl border border-[var(--color-border)] p-6 shadow-lg">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-[#c9d1d9] flex items-center gap-2">
-          <span className="w-1 h-5 bg-[#a371f7] rounded-full"></span>
+        <h3 className="text-lg font-semibold text-[var(--color-text-primary)] flex items-center gap-2">
+          <BarChart3 className="w-5 h-5 text-[var(--color-accent-purple)]" />
           工具性能
         </h3>
         <div className="flex gap-3">
           <select
             value={filterTool}
             onChange={(e) => setFilterTool(e.target.value)}
-            className="bg-[#21262d] text-[#c9d1d9] text-xs px-3 py-1.5 rounded-lg border border-[#30363d] hover:border-[#58a6ff] transition-colors cursor-pointer"
+            className="bg-[var(--color-bg-tertiary)] text-[var(--color-text-primary)] text-xs px-3 py-1.5 rounded-lg border border-[var(--color-border)] hover:border-[var(--color-accent-blue)] transition-colors cursor-pointer"
           >
             {toolNames.map(tool => (
               <option key={tool} value={tool}>
@@ -75,7 +76,7 @@ export default function ToolPerformance() {
           </select>
           <button
             onClick={refresh}
-            className="text-xs px-3 py-1.5 bg-gradient-to-r from-[#58a6ff] to-[#3b82f6] text-white rounded-lg hover:from-[#4090e0] hover:to-[#2563eb] transition-all shadow-md hover:shadow-lg"
+            className="text-xs px-3 py-1.5 bg-gradient-to-r from-[var(--color-accent-blue)] to-[var(--color-accent-blue)] text-white rounded-lg hover:opacity-80 transition-all shadow-md hover:shadow-lg"
           >
             刷新
           </button>
@@ -84,38 +85,32 @@ export default function ToolPerformance() {
 
       {toolStats.length === 0 ? (
         <div className="text-center py-12">
-          <div className="text-4xl mb-3 opacity-50">🔧</div>
-          <div className="text-[#8b949e]">暂无工具调用数据</div>
+          <Wrench className="w-12 h-12 mx-auto mb-3 text-[var(--color-text-secondary)] opacity-50" />
+          <div className="text-[var(--color-text-secondary)]">暂无工具调用数据</div>
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={filteredData} layout="vertical">
-            <defs>
-              {COLORS.map((color, index) => (
-                <linearGradient key={index} id={`barGradient${index}`} x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor={color} stopOpacity={0.8}/>
-                  <stop offset="100%" stopColor={color} stopOpacity={1}/>
-                </linearGradient>
-              ))}
-            </defs>
-            <XAxis type="number" stroke="#6e7681" fontSize={10} tickLine={false} axisLine={false} />
+            <XAxis type="number" stroke="var(--color-text-muted)" fontSize={10} tickLine={false} axisLine={false} />
             <YAxis 
               type="category" 
               dataKey="tool" 
-              stroke="#6e7681" 
+              stroke="var(--color-text-muted)" 
               fontSize={10} 
               width={80}
               tickLine={false}
               axisLine={false}
             />
             <Tooltip
+              cursor={{ fill: 'rgba(88, 166, 255, 0.1)' }}
               contentStyle={{
-                backgroundColor: '#161b22',
-                border: '1px solid #30363d',
+                backgroundColor: 'var(--color-bg-secondary)',
+                border: '1px solid var(--color-border)',
                 borderRadius: '8px',
                 boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
               }}
-              labelStyle={{ color: '#c9d1d9', fontWeight: 600 }}
+              labelStyle={{ color: 'var(--color-text-primary)', fontWeight: 600 }}
+              itemStyle={{ color: 'var(--color-text-secondary)' }}
               formatter={(value, name) => {
                 const v = Number(value)
                 if (name === 'total') return [`${v} 次`, '调用次数']
@@ -123,12 +118,25 @@ export default function ToolPerformance() {
                 return [v, String(name)]
               }}
             />
-            <Bar dataKey="total" name="调用次数" radius={[0, 6, 6, 0]} barSize={20}>
+            <Bar 
+              dataKey="total" 
+              name="调用次数" 
+              radius={[0, 6, 6, 0]} 
+              barSize={20}
+              isAnimationActive={false}
+            >
               {filteredData.map((_, index) => (
-                <Cell key={`cell-${index}`} fill={`url(#barGradient${index % COLORS.length})`} />
+                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
               ))}
             </Bar>
-            <Bar dataKey="errors" name="错误" radius={[0, 6, 6, 0]} fill="#f85149" barSize={20} />
+            <Bar 
+              dataKey="errors" 
+              name="错误" 
+              radius={[0, 6, 6, 0]} 
+              fill="#f85149" 
+              barSize={20}
+              isAnimationActive={false}
+            />
           </BarChart>
         </ResponsiveContainer>
       )}
@@ -136,19 +144,19 @@ export default function ToolPerformance() {
       {/* 统计摘要 */}
       {toolStats.length > 0 && (
         <div className="mt-6 grid grid-cols-3 gap-3">
-          <div className="bg-gradient-to-br from-[#58a6ff]/10 to-[#58a6ff]/5 rounded-xl p-3 border border-[#58a6ff]/20">
-            <div className="text-xs text-[#8b949e] mb-1">调用次数</div>
-            <div className="text-lg font-bold text-[#58a6ff]">{toolStats.reduce((a, b) => a + b.total, 0)}</div>
+          <div className="relative overflow-hidden bg-[var(--color-bg-tertiary)] rounded-xl p-3 border border-[var(--color-border)] hover:border-[var(--color-accent-blue)]/40 transition-all duration-300">
+            <div className="text-xs text-[var(--color-text-secondary)] mb-1">调用次数</div>
+            <div className="text-lg font-bold text-[var(--color-accent-blue)]">{toolStats.reduce((a, b) => a + b.total, 0)}</div>
           </div>
-          <div className="bg-gradient-to-br from-[#3fb950]/10 to-[#3fb950]/5 rounded-xl p-3 border border-[#3fb950]/20">
-            <div className="text-xs text-[#8b949e] mb-1">成功率</div>
-            <div className="text-lg font-bold text-[#3fb950]">
+          <div className="relative overflow-hidden bg-[var(--color-bg-tertiary)] rounded-xl p-3 border border-[var(--color-border)] hover:border-[var(--color-success)]/40 transition-all duration-300">
+            <div className="text-xs text-[var(--color-text-secondary)] mb-1">成功率</div>
+            <div className="text-lg font-bold text-[var(--color-success)]">
               {Math.round(toolStats.reduce((a, b) => a + b.completed, 0) / toolStats.reduce((a, b) => a + b.total, 0) * 100)}%
             </div>
           </div>
-          <div className="bg-gradient-to-br from-[#f85149]/10 to-[#f85149]/5 rounded-xl p-3 border border-[#f85149]/20">
-            <div className="text-xs text-[#8b949e] mb-1">错误数</div>
-            <div className="text-lg font-bold text-[#f85149]">{toolStats.reduce((a, b) => a + b.errors, 0)}</div>
+          <div className="relative overflow-hidden bg-[var(--color-bg-tertiary)] rounded-xl p-3 border border-[var(--color-border)] hover:border-[var(--color-error)]/40 transition-all duration-300">
+            <div className="text-xs text-[var(--color-text-secondary)] mb-1">错误数</div>
+            <div className="text-lg font-bold text-[var(--color-error)]">{toolStats.reduce((a, b) => a + b.errors, 0)}</div>
           </div>
         </div>
       )}
