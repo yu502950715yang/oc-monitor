@@ -114,7 +114,6 @@ export default function StatsPanel() {
       {/* 标题 */}
       <div className="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between">
         <h2 className="font-medium text-[var(--color-text-primary)]">监控统计</h2>
-        <span className="text-xs text-[var(--color-text-secondary)]">实时</span>
       </div>
 
       {/* 统计卡片列表 */}

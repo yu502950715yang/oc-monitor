@@ -180,6 +180,14 @@ export function registerSessionRoutes(app: Hono) {
       }
     });
 
+    // 构建 messageID -> agent 的映射（用于关联 parts 到其 agent）
+    const messageAgentMap = new Map<string, string>();
+    messages.forEach(m => {
+      if (m.agent) {
+        messageAgentMap.set(m.id, m.agent);
+      }
+    });
+
     const partList = parts.slice(-maxItems).map((p) => {
       const state = p.state as any;
       const data = p.data as any;
@@ -194,12 +202,33 @@ export function registerSessionRoutes(app: Hono) {
         }
       }
       
+      // 关联该 part 对应的 agent（通过 messageID 查找）
+      const agent = messageAgentMap.get(p.messageID);
+      
+      // 提取 subagent_type（用于 task/delegate_task/agent/subtask 工具调用）
+      let subagentType: string | undefined;
+      if (p.type === 'tool' && state?.input) {
+        const input = state.input;
+        if (typeof input === 'string') {
+          try {
+            const parsed = JSON.parse(input);
+            subagentType = parsed?.subagent_type;
+          } catch (e) {
+            // 解析失败，忽略
+          }
+        } else if (typeof input === 'object' && input !== null) {
+          subagentType = (input as any)?.subagent_type;
+        }
+      }
+      
       return {
         id: p.id,
         messageID: p.messageID,
         sessionID: p.sessionID,
         type: p.type,
         tool: p.tool,
+        agent,  // 关联的 agent（来自父 message）
+        subagentType,  // 子 agent 类型（task/agent/subtask 调用时）
         action,
         status: state?.status,
         // 增强字段：时间信息
@@ -589,6 +618,15 @@ export function registerSessionRoutes(app: Hono) {
     }
 
     const parts = await getPartsForSession(sessionID);
+    const messages = await getMessagesForSession(sessionID);
+    
+    // 构建 messageID -> agent 的映射
+    const messageAgentMap = new Map<string, string>();
+    messages.forEach(m => {
+      if (m.agent) {
+        messageAgentMap.set(m.id, m.agent);
+      }
+    });
     
     let filteredParts = parts;
     if (typeFilter) {
@@ -598,12 +636,34 @@ export function registerSessionRoutes(app: Hono) {
     const partList = filteredParts.slice(-maxItems).map((p) => {
       const state = p.state as any;
       const data = p.data as any;
+      
+      // 关联该 part 对应的 agent
+      const agent = messageAgentMap.get(p.messageID);
+      
+      // 提取 subagent_type
+      let subagentType: string | undefined;
+      if (p.type === 'tool' && state?.input) {
+        const input = state.input;
+        if (typeof input === 'string') {
+          try {
+            const parsed = JSON.parse(input);
+            subagentType = parsed?.subagent_type;
+          } catch (e) {
+            // 解析失败，忽略
+          }
+        } else if (typeof input === 'object' && input !== null) {
+          subagentType = (input as any)?.subagent_type;
+        }
+      }
+      
       return {
         id: p.id,
         messageID: p.messageID,
         sessionID: p.sessionID,
         type: p.type,
         tool: p.tool,
+        agent,
+        subagentType,
         action: formatCurrentAction(p),
         status: state?.status,
         // 增强字段：时间信息

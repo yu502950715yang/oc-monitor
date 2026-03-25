@@ -48,7 +48,8 @@ export interface Activity {
   reasoningContent?: string  // 推理过程内容
   skillName?: string
   userMessage?: string
-  
+  // 增强字段：Agent 信息
+  subagentType?: string  // 子 agent 类型（task/agent/subtask 调用时）
 }
 
 interface ActivityStreamProps {
@@ -156,6 +157,18 @@ export default function ActivityStream({ activities }: ActivityStreamProps) {
                         {activity.agent && ` · ${activity.agent}`}
                       </span>
                     )}
+                    {/* Agent 信息（工具调用时显示） */}
+                    {!activity.role && activity.agent && (
+                      <span className="text-xs text-[var(--color-text-secondary)]">
+                        · {activity.agent}
+                      </span>
+                    )}
+                    {/* Subagent 信息（task/agent/subtask 调用时显示） */}
+                    {activity.subagentType && (
+                      <span className="text-xs px-1.5 py-0.5 rounded bg-[#d2a8ff]/20 text-[#d2a8ff]">
+                        → {activity.subagentType}
+                      </span>
+                    )}
                     {/* Skill 工具调用显示 */}
                     {activity.skillName && (
                       <span className="text-xs px-1.5 py-0.5 rounded bg-[#a855f7]/20 text-[#a855f7]">
@@ -175,11 +188,6 @@ export default function ActivityStream({ activities }: ActivityStreamProps) {
                         'bg-[var(--color-bg-tertiary)] text-[var(--color-text-secondary)]'
                       }`}>
                         {activity.status}
-                      </span>
-                    )}
-                    {activity.sessionName && (
-                      <span className="text-xs text-[var(--color-text-secondary)]">
-                        · {activity.sessionName}
                       </span>
                     )}
                   </div>
@@ -212,10 +220,11 @@ export default function ActivityStream({ activities }: ActivityStreamProps) {
                     </div>
                   )}
                   {/* 元信息 */}
-                  {(activity.role || activity.agent || activity.messageId) && (
+                  {(activity.role || activity.agent || activity.messageId || activity.subagentType) && (
                     <div className="mb-3 text-xs text-[var(--color-text-secondary)] space-y-1">
                       {activity.role && <div>角色: {activity.role}</div>}
                       {activity.agent && <div>智能体: {activity.agent}</div>}
+                      {activity.subagentType && <div>子智能体: {activity.subagentType}</div>}
                       {activity.messageId && <div>消息ID: {activity.messageId}</div>}
                       {activity.duration && <div>耗时: {formatDuration(activity.duration)}</div>}
                     </div>

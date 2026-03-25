@@ -209,6 +209,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             sessionName: apiActivity.session?.title,
             // 附加信息
             toolName: p.tool,
+            agent: p.agent,  // 关联的 agent（来自父 message）
+            subagentType: p.subagentType,  // 子 agent 类型（task/agent/subtask 调用时）
             status: p.status,
             input: p.input,
             output: p.output,
