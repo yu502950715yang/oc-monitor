@@ -330,11 +330,10 @@ export function registerSessionRoutes(app: Hono) {
       }
     }
 
-    // 按调用次数排序，取前 5
+    // 按调用次数排序
     const topSkills = Array.from(skillMap.entries())
       .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
+      .sort((a, b) => b.count - a.count);
 
     return c.json({
       session: {

@@ -4,7 +4,12 @@ import { useApp } from '../context/AppContext'
 import { useDashboard } from '../hooks/useApi'
 import { Wrench, BarChart3, Loader2 } from 'lucide-react'
 
-const COLORS = ['#58a6ff', '#3fb950', '#d29922', '#f85149', '#a371f7', '#ff7b72', '#79c0ff', '#3fb950', '#d29922', '#f85149']
+const COLORS = [
+  '#58a6ff', '#3fb950', '#d29922', '#f85149', '#a371f7', 
+  '#ff7b72', '#79c0ff', '#3fb950', '#d29922', '#f85149',
+  '#a371f7', '#ff7b72', '#79c0ff', '#58a6ff', '#3fb950',
+  '#d29922', '#f85149', '#a371f7', '#ff7b72', '#79c0ff'
+]
 
 export default function ToolPerformance() {
   const { selectedSessionId } = useApp()
@@ -24,7 +29,7 @@ export default function ToolPerformance() {
   const toolNames = ['all', ...toolStats.map(t => t.tool)]
 
 // 转换为饼图数据格式
-  const pieData = filteredData.slice(0, 10).map(item => ({
+  const pieData = filteredData.map(item => ({
     name: item.tool?.length > 15 ? item.tool.slice(0, 12) + '..' : item.tool || 'unknown',
     value: item.total || 0,
     fullName: item.tool,
@@ -129,7 +134,7 @@ export default function ToolPerformance() {
 
           {/* 右侧工具列表 */}
           <div className="w-full lg:w-1/2 space-y-2 max-h-[200px] overflow-y-auto">
-            {filteredData.slice(0, 10).map((item, index) => (
+            {filteredData.map((item, index) => (
               <div 
                 key={item.tool}
                 className="flex items-center justify-between p-2 rounded-lg bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-hover)] transition-colors"
