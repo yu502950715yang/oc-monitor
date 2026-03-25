@@ -45,12 +45,14 @@ export default function MCPHealth() {
               <XAxis dataKey="tool" stroke="var(--color-text-secondary)" fontSize={10} />
               <YAxis stroke="var(--color-text-secondary)" fontSize={10} />
               <Tooltip
+                cursor={{ fill: 'rgba(88, 166, 255, 0.1)' }}
                 contentStyle={{
                   backgroundColor: 'var(--color-bg-secondary)',
                   border: '1px solid var(--color-border)',
-                  borderRadius: '6px',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
                 }}
-                labelStyle={{ color: 'var(--color-text-primary)' }}
+                labelStyle={{ color: 'var(--color-text-primary)', fontWeight: 600 }}
                 itemStyle={{ color: 'var(--color-text-secondary)' }}
               />
               <Bar dataKey="total" name="调用次数" radius={[4, 4, 0, 0]}>
