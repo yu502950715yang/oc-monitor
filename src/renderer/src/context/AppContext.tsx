@@ -3,8 +3,24 @@ import type { Session } from '../components/SessionList'
 import type { Activity } from '../components/ActivityStream'
 import type { Plan } from '../components/PlanProgress'
 import type { SessionNode } from '../components/ActivityTree'
-import { useSessions, usePlan, useActivity, useSessionTree, type SessionTreeNode } from '../hooks/useApi'
+import { useSessions, usePlan, useActivity, useSessionTree, useSessionStats, type SessionTreeNode } from '../hooks/useApi'
 import { usePolling } from '../hooks/usePolling'
+
+// 后端返回的会话统计信息
+export interface SessionStats {
+  totalMessages: number
+  totalParts: number
+  toolCount: number
+  reasoningCount: number
+  // 新增字段
+  totalTools: number
+  errorCount: number
+  mcpCount: number
+  skillCount: number
+  errorRate: number
+  totalTokens: number
+  topSkills: { name: string; count: number }[]
+}
 
 interface AppState {
   sessions: Session[]
@@ -16,6 +32,7 @@ interface AppState {
   activeView: 'stream' | 'tree' | 'dashboard'
   isLoading: boolean
   error: string | null
+  sessionStats: SessionStats | null  // 后端返回的完整统计
 }
 
 interface AppContextType extends AppState {
@@ -26,6 +43,7 @@ interface AppContextType extends AppState {
   refresh: () => void
   refreshSessionTree: () => void  // 单独刷新活动树数据
   loadMoreSessions: () => void  // 加载更多会话
+  sessionStats: SessionStats | null  // 后端返回的完整统计
 }
 
 const AppContext = createContext<AppContextType | null>(null)
@@ -51,11 +69,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [activeView, setActiveView] = useState<'stream' | 'tree' | 'dashboard'>('stream')
   const [cachedSessionTree, setCachedSessionTree] = useState<SessionTreeNode | null>(null)
   const [sessionLimit, setSessionLimit] = useState(20)
+  const [sessionStats, setSessionStats] = useState<SessionStats | null>(null)
 
   const { data: apiSessions, loading: sessionsLoading, error: sessionsError, refetch: refetchSessions } = useSessions(sessionLimit)
   const { data: apiPlan, loading: planLoading, error: planError, refetch: refetchPlan } = usePlan()
   const { data: apiActivity, loading: activityLoading, refetch: refetchActivity } = useActivity(selectedSessionId)
   const { data: sessionTree, loading: sessionTreeLoading, refetch: refetchSessionTree } = useSessionTree(selectedSessionId)
+  const { data: sessionStatsData, refetch: refetchSessionStats } = useSessionStats(selectedSessionId)
   
   // 调试日志
   console.log('[AppContext] selectedSessionId:', selectedSessionId)
@@ -213,7 +233,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         toolName: a.toolName
       })))
       
-      // 按时间排序并限制数量
+      // 按时间排序并限制数量（用于展示）
       const sorted = activities
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
         .slice(0, 100)
@@ -236,6 +256,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [apiActivity])
 
+  // 使用 useSessionStats hook 获取会话统计
+  useEffect(() => {
+    if (sessionStatsData) {
+      setSessionStats({
+        totalMessages: sessionStatsData.counts.totalMessages,
+        totalParts: sessionStatsData.counts.totalParts,
+        toolCount: sessionStatsData.counts.toolCount,
+        reasoningCount: sessionStatsData.counts.reasoningCount,
+        totalTools: sessionStatsData.tools.totalTools,
+        errorCount: sessionStatsData.tools.errorCount,
+        mcpCount: sessionStatsData.tools.mcpCount,
+        skillCount: sessionStatsData.tools.skillCount,
+        errorRate: sessionStatsData.tools.errorRate,
+        totalTokens: sessionStatsData.tokens.total,
+        topSkills: sessionStatsData.topSkills,
+      })
+    }
+  }, [sessionStatsData])
+
   useEffect(() => {
     if (apiPlan && apiPlan.total > 0) {
       setPlans([{
@@ -255,12 +294,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     refetchSessions()
     refetchPlan()
     refetchActivity()
+    refetchSessionStats()
     // 活动树视图时不自动刷新 sessionTree（避免数据竞态导致节点闪烁）
     // 活动树用户需手动点击刷新按钮
     if (activeView !== 'tree') {
       refetchSessionTree()
     }
-  }, [refetchSessions, refetchPlan, refetchActivity, refetchSessionTree, activeView])
+  }, [refetchSessions, refetchPlan, refetchActivity, refetchSessionStats, refetchSessionTree, activeView])
 
   // 单独刷新活动树数据（手动刷新时使用）
   const refreshSessionTree = useCallback(() => {
@@ -370,6 +410,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         refresh,
         refreshSessionTree,
         loadMoreSessions,
+        sessionStats,
       }}
     >
       {children}
