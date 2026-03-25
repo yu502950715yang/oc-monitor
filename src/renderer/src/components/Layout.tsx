@@ -33,7 +33,6 @@ export default function Layout({ children }: LayoutProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-semibold text-[var(--color-primary)]">OC 监控助手</h1>
-            <span className="text-xs px-2 py-0.5 bg-[var(--color-bg-tertiary)] rounded text-[var(--color-text-secondary)]">T9</span>
           </div>
           <div className="flex items-center gap-4">
             <span className="text-sm text-[var(--color-text-secondary)]">实时监控</span>

@@ -89,7 +89,6 @@ export default function SessionList({
       {/* 标题 */}
       <div className="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between">
         <h2 className="font-medium text-[var(--color-text-primary)]">会话列表</h2>
-        <span className="text-xs text-[var(--color-text-secondary)]">T10</span>
       </div>
 
       {/* 会话列表 - 支持滚动加载 */}
