@@ -227,10 +227,14 @@ function AppContent() {
         </div>
       </div>
 
-      {/* 第二行：Token趋势 + 工具性能 */}
-      <div className="grid grid-cols-2 gap-6 items-stretch">
-        <div className="min-h-[480px]"><TokenTrend /></div>
-        <div className="min-h-[480px]"><ToolPerformance /></div>
+      {/* 第二行：Token趋势（独占一行） */}
+      <div className="flex-none" style={{ height: '320px' }}>
+        <TokenTrend />
+      </div>
+
+      {/* 第三行：工具性能（独占一行） */}
+      <div className="flex-1 min-h-[280px]">
+        <ToolPerformance />
       </div>
 
       {/* 第三行：Top Skills + MCP健康度 */}

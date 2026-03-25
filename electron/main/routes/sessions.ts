@@ -467,8 +467,7 @@ export function registerSessionRoutes(app: Hono) {
         avgDuration: item.durations.length > 0 ? Math.round(item.durations.reduce((a: number, b: number) => a + b, 0) / item.durations.length) : 0,
         successRate: item.total > 0 ? Math.round((item.completed / item.total) * 10000) / 100 : 0,
       }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 10);
+      .sort((a, b) => b.total - a.total);
 
     // MCP stats
     const mcpMap = new Map();

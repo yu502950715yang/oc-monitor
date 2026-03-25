@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react'
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import { useApp } from '../context/AppContext'
 import { useDashboard } from '../hooks/useApi'
 import { Wrench, BarChart3, Loader2 } from 'lucide-react'
 
-const COLORS = ['#58a6ff', '#3fb950', '#d29922', '#f85149', '#a371f7', '#ff7b72', '#79c0ff']
+const COLORS = ['#58a6ff', '#3fb950', '#d29922', '#f85149', '#a371f7', '#ff7b72', '#79c0ff', '#3fb950', '#d29922', '#f85149']
 
 export default function ToolPerformance() {
   const { selectedSessionId } = useApp()
@@ -14,27 +14,28 @@ export default function ToolPerformance() {
   // 从 dashboardData 获取 toolStats 数据
   const toolStats = useMemo(() => {
     const stats = dashboardData?.toolStats || []
-    
-    // 转换为图表数据（添加 toolFull 字段以保持兼容性）
-    const data = stats.map(item => ({
-      tool: item.tool.length > 12 ? item.tool.slice(0, 10) + '..' : item.tool,
-      toolFull: item.tool,
-      total: item.total,
-      completed: item.completed,
-      errors: item.errors,
-      avgDuration: item.avgDuration,
-      successRate: item.successRate,
-    }))
-
-    // 按调用次数排序
-    return data.sort((a, b) => b.total - a.total).slice(0, 10)
+    return stats.sort((a, b) => b.total - a.total)
   }, [dashboardData])
 
   const filteredData = filterTool === 'all' 
     ? toolStats 
-    : toolStats.filter(t => t.toolFull === filterTool)
+    : toolStats.filter(t => t.tool === filterTool)
 
-  const toolNames = ['all', ...toolStats.map(t => t.toolFull)]
+  const toolNames = ['all', ...toolStats.map(t => t.tool)]
+
+// 转换为饼图数据格式
+  const pieData = filteredData.slice(0, 10).map(item => ({
+    name: item.tool?.length > 15 ? item.tool.slice(0, 12) + '..' : item.tool || 'unknown',
+    value: item.total || 0,
+    fullName: item.tool,
+    errors: item.errors,
+    successRate: item.successRate,
+  }))
+
+  // 计算统计数据
+  const totalCalls = toolStats.reduce((a, b) => a + (b.total || 0), 0)
+  const totalErrors = toolStats.reduce((a, b) => a + (b.errors || 0), 0)
+  const successRate = totalCalls > 0 ? Math.round(((totalCalls - totalErrors) / totalCalls) * 100) : 0
 
   return (
     <div className="bg-[var(--color-card)] rounded-xl border border-[var(--color-border)] p-6 shadow-lg">
@@ -77,56 +78,84 @@ export default function ToolPerformance() {
           <div className="text-[var(--color-text-secondary)]">暂无工具调用数据</div>
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={filteredData} layout="vertical">
-            <XAxis type="number" stroke="var(--color-text-muted)" fontSize={10} tickLine={false} axisLine={false} />
-            <YAxis 
-              type="category" 
-              dataKey="tool" 
-              stroke="var(--color-text-muted)" 
-              fontSize={10} 
-              width={80}
-              tickLine={false}
-              axisLine={false}
-            />
-            <Tooltip
-              cursor={{ fill: 'rgba(88, 166, 255, 0.1)' }}
-              contentStyle={{
-                backgroundColor: 'var(--color-bg-secondary)',
-                border: '1px solid var(--color-border)',
-                borderRadius: '8px',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-              }}
-              labelStyle={{ color: 'var(--color-text-primary)', fontWeight: 600 }}
-              itemStyle={{ color: 'var(--color-text-secondary)' }}
-              formatter={(value, name) => {
-                const v = Number(value)
-                if (name === 'total') return [`${v} 次`, '调用次数']
-                if (name === 'errors') return [`${v} 次`, '错误']
-                return [v, String(name)]
-              }}
-            />
-            <Bar 
-              dataKey="total" 
-              name="调用次数" 
-              radius={[0, 6, 6, 0]} 
-              barSize={20}
-              isAnimationActive={false}
-            >
-              {filteredData.map((_, index) => (
-                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-              ))}
-            </Bar>
-            <Bar 
-              dataKey="errors" 
-              name="错误" 
-              radius={[0, 6, 6, 0]} 
-              fill="#f85149" 
-              barSize={20}
-              isAnimationActive={false}
-            />
-          </BarChart>
-        </ResponsiveContainer>
+        <div className="flex flex-col lg:flex-row items-center gap-4">
+          {/* 饼图 */}
+          <div className="w-full lg:w-1/2 h-[200px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={2}
+                  dataKey="value"
+                  nameKey="name"
+                  isAnimationActive={false}
+                >
+                  {pieData.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--color-bg-secondary)',
+                    border: '1px solid var(--color-border)',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                  }}
+                  labelStyle={{ color: 'var(--color-text-primary)', fontWeight: 600 }}
+                  formatter={(value, _name, props) => {
+                    const item = props?.payload
+                    const v = Number(value) || 0
+                    return [
+                      `${v} 次 (${Math.round(v / totalCalls * 100)}%)`,
+                      item?.fullName || ''
+                    ]
+                  }}
+                />
+                <Legend 
+                  layout="vertical" 
+                  align="right" 
+                  verticalAlign="middle"
+                  formatter={(value) => (
+                    <span className="text-[var(--color-text-secondary)] text-xs">{value}</span>
+                  )}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* 右侧工具列表 */}
+          <div className="w-full lg:w-1/2 space-y-2 max-h-[200px] overflow-y-auto">
+            {filteredData.slice(0, 10).map((item, index) => (
+              <div 
+                key={item.tool}
+                className="flex items-center justify-between p-2 rounded-lg bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-hover)] transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <div 
+                    className="w-3 h-3 rounded-full"
+                    style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                  />
+                  <span className="text-sm text-[var(--color-text-primary)]">
+                    {item.tool.length > 20 ? item.tool.slice(0, 18) + '..' : item.tool}
+                  </span>
+                </div>
+                <div className="flex items-center gap-3 text-xs">
+                  <span className="text-[var(--color-accent-blue)] font-medium">{item.total}次</span>
+                  <span className={item.successRate >= 80 ? "text-[var(--color-success)]" : "text-[var(--color-error)]"}>
+                    {item.successRate}%
+                  </span>
+                  {item.errors > 0 && (
+                    <span className="text-[var(--color-error)]">{item.errors}错</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* 统计摘要 */}
@@ -134,17 +163,15 @@ export default function ToolPerformance() {
         <div className="mt-6 grid grid-cols-3 gap-3">
           <div className="relative overflow-hidden bg-[var(--color-bg-tertiary)] rounded-xl p-3 border border-[var(--color-border)] hover:border-[var(--color-accent-blue)]/40 transition-all duration-300">
             <div className="text-xs text-[var(--color-text-secondary)] mb-1">调用次数</div>
-            <div className="text-lg font-bold text-[var(--color-accent-blue)]">{toolStats.reduce((a, b) => a + b.total, 0)}</div>
+            <div className="text-lg font-bold text-[var(--color-accent-blue)]">{totalCalls}</div>
           </div>
           <div className="relative overflow-hidden bg-[var(--color-bg-tertiary)] rounded-xl p-3 border border-[var(--color-border)] hover:border-[var(--color-success)]/40 transition-all duration-300">
             <div className="text-xs text-[var(--color-text-secondary)] mb-1">成功率</div>
-            <div className="text-lg font-bold text-[var(--color-success)]">
-              {Math.round(toolStats.reduce((a, b) => a + b.completed, 0) / toolStats.reduce((a, b) => a + b.total, 0) * 100)}%
-            </div>
+            <div className="text-lg font-bold text-[var(--color-success)]">{successRate}%</div>
           </div>
           <div className="relative overflow-hidden bg-[var(--color-bg-tertiary)] rounded-xl p-3 border border-[var(--color-border)] hover:border-[var(--color-error)]/40 transition-all duration-300">
             <div className="text-xs text-[var(--color-text-secondary)] mb-1">错误数</div>
-            <div className="text-lg font-bold text-[var(--color-error)]">{toolStats.reduce((a, b) => a + b.errors, 0)}</div>
+            <div className="text-lg font-bold text-[var(--color-error)]">{totalErrors}</div>
           </div>
         </div>
       )}
