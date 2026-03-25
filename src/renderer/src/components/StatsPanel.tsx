@@ -3,12 +3,26 @@ import { Coins, Wrench, Network, Sparkles, AlertTriangle } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 
 export default function StatsPanel() {
-  const { sessions, activities } = useApp()
+  const { sessions, activities, sessionStats } = useApp()
 
   const stats = useMemo(() => {
     const totalSessions = sessions.length
     
-    // 工具调用统计
+    // 优先使用后端统计
+    if (sessionStats && sessionStats.totalTools > 0) {
+      return {
+        totalSessions,
+        totalTools: sessionStats.totalTools,
+        errorCount: sessionStats.errorCount,
+        mcpCount: sessionStats.mcpCount,
+        totalTokens: sessionStats.totalTokens,
+        errorRate: sessionStats.errorRate,
+        skillCount: sessionStats.skillCount,
+        topSkills: sessionStats.topSkills || [],
+      }
+    }
+    
+    // 回退到前端计算（当后端统计不可用时）
     const toolActivities = activities.filter(a => a.type === 'tool')
     const totalTools = toolActivities.length
     
@@ -39,7 +53,7 @@ export default function StatsPanel() {
       .slice(0, 5)
       .map(([name, count]) => ({ name, count }))
     
-    // Token统计
+    // Token统计 - 从消息 activities 中计算
     const messageActivities = activities.filter(a => a.type === 'message' && a.tokens)
     const totalTokens = messageActivities.reduce((sum, m) => sum + (m.tokens?.total || 0), 0)
     
@@ -56,7 +70,7 @@ export default function StatsPanel() {
       skillCount,
       topSkills,
     }
-  }, [sessions, activities])
+  }, [sessions, activities, sessionStats])
 
   // 卡片颜色配置 - 使用设计系统变量，支持深色/浅色模式
   const cardColors: Record<string, { accentBg: string; text: string; accent: string }> = {

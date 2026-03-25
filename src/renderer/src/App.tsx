@@ -22,11 +22,18 @@ function AppContent() {
     setSelectedSession,
     setActiveView,
     getSessionNodes,
-    loadMoreSessions
+    loadMoreSessions,
+    sessionStats
   } = useApp()
 
-  // 计算所有 Skills（仅从工具调用中获取）
+  // 计算所有 Skills（优先使用 sessionStats，否则从 activities 过滤）
   const allSkills = useMemo(() => {
+    // 优先使用 sessionStats
+    if (sessionStats?.topSkills && sessionStats.topSkills.length > 0) {
+      return sessionStats.topSkills.slice(0, 5)
+    }
+    
+    // 回退到从 activities 计算
     const skillCountMap: Record<string, number> = {}
     
     // 工具调用中的 skill（toolName === 'skill'）
@@ -40,13 +47,19 @@ function AppContent() {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map(([name, count]) => ({ name, count }))
-  }, [activities])
+  }, [activities, sessionStats])
   
-  // 计算总Token
+  // 计算总Token（优先使用 sessionStats，否则从 activities 计算）
   const totalTokens = useMemo(() => {
+    // 优先使用 sessionStats
+    if (sessionStats?.totalTokens) {
+      return sessionStats.totalTokens
+    }
+    
+    // 回退到从 activities 计算
     const messageActivities = activities.filter(a => a.type === 'message' && a.tokens)
     return messageActivities.reduce((sum, m) => sum + (m.tokens?.total || 0), 0)
-  }, [activities])
+  }, [activities, sessionStats])
 
   // Dashboard视图内容
   const renderDashboard = () => (
@@ -73,7 +86,7 @@ function AppContent() {
                   className="text-2xl font-bold"
                   style={{ color: 'var(--color-accent-yellow)' }}
                 >
-                  {totalTokens > 0 ? totalTokens.toLocaleString() : '-'}
+                  {(sessionStats?.totalTokens || totalTokens) > 0 ? (sessionStats?.totalTokens || totalTokens).toLocaleString() : '-'}
                 </div>
                 <div className="text-xs text-[var(--color-text-secondary)] mt-1 flex items-center gap-1">
                   <Coins className="w-3.5 h-3.5" />
@@ -103,7 +116,7 @@ function AppContent() {
                   className="text-2xl font-bold"
                   style={{ color: 'var(--color-accent-blue)' }}
                 >
-                  {activities.filter(a => a.type === 'tool').length}
+                  {sessionStats?.totalTools || activities.filter(a => a.type === 'tool').length}
                 </div>
                 <div className="text-xs text-[var(--color-text-secondary)] mt-1 flex items-center gap-1">
                   <Wrench className="w-3.5 h-3.5" />
@@ -133,7 +146,7 @@ function AppContent() {
                   className="text-2xl font-bold"
                   style={{ color: 'var(--color-accent-purple)' }}
                 >
-                  {activities.filter(a => a.toolName === 'skill').length}
+                  {sessionStats?.skillCount || activities.filter(a => a.toolName === 'skill').length}
                 </div>
                 <div className="text-xs text-[var(--color-text-secondary)] mt-1 flex items-center gap-1">
                   <Sparkles className="w-3.5 h-3.5" />
@@ -163,7 +176,7 @@ function AppContent() {
                   className="text-2xl font-bold"
                   style={{ color: 'var(--color-accent-cyan)' }}
                 >
-                  {activities.filter(a => a.toolName?.startsWith('context7_') || a.toolName?.startsWith('websearch_')).length}
+                  {sessionStats?.mcpCount || activities.filter(a => a.toolName?.startsWith('context7_') || a.toolName?.startsWith('websearch_')).length}
                 </div>
                 <div className="text-xs text-[var(--color-text-secondary)] mt-1 flex items-center gap-1">
                   <Network className="w-3.5 h-3.5" />
@@ -193,7 +206,7 @@ function AppContent() {
                   className="text-2xl font-bold"
                   style={{ color: 'var(--color-error)' }}
                 >
-                  {activities.filter(a => a.status === 'error' || a.error).length}
+                  {sessionStats?.errorCount || activities.filter(a => a.status === 'error' || a.error).length}
                 </div>
                 <div className="text-xs text-[var(--color-text-secondary)] mt-1 flex items-center gap-1">
                   <AlertTriangle className="w-3.5 h-3.5" />
@@ -230,12 +243,12 @@ function AppContent() {
               Top Skills
             </h3>
             <span className="text-xs text-[var(--color-text-secondary)] bg-[var(--color-bg-tertiary)] px-2 py-1 rounded-full">
-              {allSkills.length} 个技能
+              {(sessionStats?.topSkills || allSkills).length} 个技能
             </span>
           </div>
-          {allSkills.length > 0 ? (
+          {(sessionStats?.topSkills || allSkills).length > 0 ? (
             <div className="space-y-4">
-              {allSkills.map((skill, idx) => (
+              {(sessionStats?.topSkills || allSkills).map((skill, idx) => (
                 <div key={idx} className="group relative overflow-hidden bg-[var(--color-bg-tertiary)]/50 rounded-lg p-3 hover:bg-[var(--color-bg-hover)] transition-all duration-300">
                   <div className="flex items-center justify-between relative z-10">
                     <div className="flex items-center gap-3">
@@ -253,7 +266,7 @@ function AppContent() {
                       <div className="w-32 h-2 bg-[var(--color-border)] rounded-full overflow-hidden">
                         <div 
                           className="h-full bg-gradient-to-r from-[var(--color-accent-purple)] to-purple-500 rounded-full"
-                          style={{ width: `${(skill.count / (allSkills[0]?.count || 1)) * 100}%` }}
+                          style={{ width: `${(skill.count / ((sessionStats?.topSkills || allSkills)[0]?.count || 1)) * 100}%` }}
                         />
                       </div>
                       <span className="text-sm text-[var(--color-accent-purple)] font-semibold w-8 text-right">{skill.count}</span>

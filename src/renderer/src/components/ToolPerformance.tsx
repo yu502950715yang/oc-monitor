@@ -1,53 +1,34 @@
 import { useMemo, useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { useApp } from '../context/AppContext'
-import { Wrench, BarChart3 } from 'lucide-react'
+import { useDashboard } from '../hooks/useApi'
+import { Wrench, BarChart3, Loader2 } from 'lucide-react'
 
 const COLORS = ['#58a6ff', '#3fb950', '#d29922', '#f85149', '#a371f7', '#ff7b72', '#79c0ff']
 
 export default function ToolPerformance() {
-  const { activities, refresh } = useApp()
+  const { selectedSessionId } = useApp()
+  const { data: dashboardData, loading, refetch } = useDashboard(selectedSessionId)
   const [filterTool, setFilterTool] = useState<string>('all')
 
+  // 从 dashboardData 获取 toolStats 数据
   const toolStats = useMemo(() => {
-    const toolActivities = activities.filter(a => a.type === 'tool' && a.toolName)
+    const stats = dashboardData?.toolStats || []
     
-    // 按工具名分组统计
-    const toolMap = new Map<string, { total: number; completed: number; errors: number; durations: number[] }>()
-    
-    toolActivities.forEach(a => {
-      const tool = a.toolName!
-      if (!toolMap.has(tool)) {
-        toolMap.set(tool, { total: 0, completed: 0, errors: 0, durations: [] })
-      }
-      const stats = toolMap.get(tool)!
-      stats.total++
-      if (a.status === 'completed') stats.completed++
-      if (a.status === 'error' || a.error) stats.errors++
-      if (a.duration) stats.durations.push(a.duration)
-    })
-
-    // 转换为图表数据
-    const data = Array.from(toolMap.entries()).map(([tool, stats]) => {
-      const avgDuration = stats.durations.length > 0
-        ? Math.round(stats.durations.reduce((a, b) => a + b, 0) / stats.durations.length)
-        : 0
-      const successRate = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0
-      
-      return {
-        tool: tool.length > 12 ? tool.slice(0, 10) + '..' : tool,
-        toolFull: tool,
-        total: stats.total,
-        completed: stats.completed,
-        errors: stats.errors,
-        avgDuration,
-        successRate,
-      }
-    })
+    // 转换为图表数据（添加 toolFull 字段以保持兼容性）
+    const data = stats.map(item => ({
+      tool: item.tool.length > 12 ? item.tool.slice(0, 10) + '..' : item.tool,
+      toolFull: item.tool,
+      total: item.total,
+      completed: item.completed,
+      errors: item.errors,
+      avgDuration: item.avgDuration,
+      successRate: item.successRate,
+    }))
 
     // 按调用次数排序
     return data.sort((a, b) => b.total - a.total).slice(0, 10)
-  }, [activities])
+  }, [dashboardData])
 
   const filteredData = filterTool === 'all' 
     ? toolStats 
@@ -75,15 +56,22 @@ export default function ToolPerformance() {
             ))}
           </select>
           <button
-            onClick={refresh}
-            className="text-xs px-3 py-1.5 bg-gradient-to-r from-[var(--color-accent-blue)] to-[var(--color-accent-blue)] text-white rounded-lg hover:opacity-80 transition-all shadow-md hover:shadow-lg"
+            onClick={refetch}
+            disabled={loading}
+            className="text-xs px-3 py-1.5 bg-gradient-to-r from-[var(--color-accent-blue)] to-[var(--color-accent-blue)] text-white rounded-lg hover:opacity-80 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
           >
+            {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
             刷新
           </button>
         </div>
       </div>
 
-      {toolStats.length === 0 ? (
+      {loading ? (
+        <div className="text-center py-12">
+          <Loader2 className="w-12 h-12 mx-auto mb-3 text-[var(--color-accent-blue)] animate-spin" />
+          <div className="text-[var(--color-text-secondary)]">加载中...</div>
+        </div>
+      ) : toolStats.length === 0 ? (
         <div className="text-center py-12">
           <Wrench className="w-12 h-12 mx-auto mb-3 text-[var(--color-text-secondary)] opacity-50" />
           <div className="text-[var(--color-text-secondary)]">暂无工具调用数据</div>

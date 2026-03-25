@@ -281,24 +281,14 @@ export function registerSessionRoutes(app: Hono) {
     const toolParts = parts.filter(p => p.type === "tool");
     const reasoningParts = parts.filter(p => p.type === "reasoning");
 
-    // 计算 token 总数：直接使用 API 返回的 total
-    // 注意：根据数据分析，total = input + output + cache，不包含 reasoning
+    // 计算 token 总数
     let totalTokens = 0;
-    let tokenCount = 0;
     for (const m of messages) {
       const msgData = m.data as any;
-      const tokens = msgData?.tokens;
-      if (tokens && tokens.total) {
-        const t = Number(tokens.total) || 0;
-        totalTokens += t;
-        tokenCount++;
-        // 打印调试信息
-        if (tokenCount <= 5) {
-          console.log(`[Token Debug ${tokenCount}] total=${t}, input=${tokens.input}, output=${tokens.output}, reasoning=${tokens.reasoning}, cache=${JSON.stringify(tokens.cache)}`);
-        }
+      if (msgData?.tokens?.total) {
+        totalTokens += msgData.tokens.total;
       }
     }
-    console.log(`[Token Summary] tokenCount=${tokenCount}, totalTokens=${totalTokens}`);
 
     // 计算错误数量：type === "tool" 且 (state.status === "error" 或 state.error 存在)
     const errorCount = toolParts.filter(p => {
@@ -362,167 +352,6 @@ export function registerSessionRoutes(app: Hono) {
       },
       topSkills,
     });
-  });
-
-  // Get dashboard data
-  app.get("/api/sessions/:id/dashboard", async (c) => {
-    const sessionID = c.req.param("id");
-
-    if (!checkStorageExists()) {
-      return c.json(
-        {
-          error: "SESSION_NOT_FOUND",
-          message: `Session '${sessionID}' not found`,
-        },
-        404
-      );
-    }
-
-    const session = await getSession(sessionID);
-    if (!session) {
-      return c.json(
-        {
-          error: "SESSION_NOT_FOUND",
-          message: `Session '${sessionID}' not found`,
-        },
-        404
-      );
-    }
-
-    const messages = await getMessagesForSession(sessionID);
-    const parts = await getPartsForSession(sessionID);
-
-    // Token data
-    const tokenData = [];
-    for (const m of messages) {
-      const msgData = m.data as any;
-      const tokens = msgData?.tokens;
-      const cost = msgData?.cost;
-      if (tokens) {
-        // 提取各部分 token
-        const input = Number(tokens.input) || Number(tokens.prompt) || 0;
-        const output = Number(tokens.output) || Number(tokens.completion) || 0;
-        const reasoning = Number(tokens.reasoning) || Number(tokens.reasoning_tokens) || 0;
-        
-        // cache 可能是对象 { read: number, write: number } 或数字
-        let cache = 0;
-        if (typeof tokens.cache === 'number') {
-          cache = tokens.cache;
-        } else if (tokens.cache?.read) {
-          cache = Number(tokens.cache.read) || 0;
-        }
-        
-        // 直接使用 API 返回的 total，不重新计算
-        // 因为 OpenAI 的 total 计算方式可能与 input+output+reasoning+cache 不同
-        const total = Number(tokens.total) || 0;
-        
-        // cost 处理
-        let costValue = 0;
-        if (typeof cost === 'number') {
-          costValue = cost;
-        } else if (cost?.total) {
-          costValue = Number(cost.total) || 0;
-        }
-        
-        tokenData.push({
-          timestamp: m.createdAt.toISOString(),
-          total,
-          input,
-          output,
-          reasoning,
-          cache,
-          cost: costValue,
-        });
-      }
-    }
-
-    // Tool stats
-    const toolParts = parts.filter(p => p.type === "tool");
-    const toolMap = new Map();
-
-    for (const p of toolParts) {
-      const tool = p.tool || "unknown";
-      const state = p.state as any;
-      const status = state?.status;
-      const hasError = status === "error" || state?.error;
-      let duration = 0;
-      if (state?.time?.start && state?.time?.end) {
-        duration = state.time.end - state.time.start;
-      }
-
-      const existing = toolMap.get(tool) || { tool, total: 0, completed: 0, errors: 0, durations: [] };
-      existing.total++;
-      if (status === "completed") existing.completed++;
-      if (hasError) existing.errors++;
-      if (duration > 0) existing.durations.push(duration);
-      toolMap.set(tool, existing);
-    }
-
-    const toolStats = Array.from(toolMap.values())
-      .map(item => ({
-        tool: item.tool,
-        total: item.total,
-        completed: item.completed,
-        errors: item.errors,
-        avgDuration: item.durations.length > 0 ? Math.round(item.durations.reduce((a: number, b: number) => a + b, 0) / item.durations.length) : 0,
-        successRate: item.total > 0 ? Math.round((item.completed / item.total) * 10000) / 100 : 0,
-      }))
-      .sort((a, b) => b.total - a.total)
-      .slice(0, 10);
-
-    // MCP stats
-    const mcpMap = new Map();
-    for (const p of toolParts) {
-      const tool = p.tool || "";
-      if (!tool.startsWith("context7_") && !tool.startsWith("websearch_")) continue;
-
-      let baseTool = tool.startsWith("context7_") ? "context7" : "websearch";
-      const state = p.state as any;
-      const status = state?.status;
-      const hasError = status === "error" || state?.error;
-      let duration = 0;
-      if (state?.time?.start && state?.time?.end) {
-        duration = state.time.end - state.time.start;
-      }
-
-      const existing = mcpMap.get(baseTool) || { tool: baseTool, total: 0, completed: 0, errors: 0, durations: [] };
-      existing.total++;
-      if (status === "completed") existing.completed++;
-      if (hasError) existing.errors++;
-      if (duration > 0) existing.durations.push(duration);
-      mcpMap.set(baseTool, existing);
-    }
-
-    const mcpStats = Array.from(mcpMap.values())
-      .map(item => ({
-        tool: item.tool,
-        total: item.total,
-        completed: item.completed,
-        errors: item.errors,
-        avgDuration: item.durations.length > 0 ? Math.round(item.durations.reduce((a: number, b: number) => a + b, 0) / item.durations.length) : 0,
-        successRate: item.total > 0 ? Math.round((item.completed / item.total) * 10000) / 100 : 0,
-      }))
-      .sort((a, b) => b.total - a.total);
-
-    // Errors
-    const errors = [];
-    for (const p of toolParts) {
-      const state = p.state as any;
-      const hasError = state?.status === "error" || state?.error;
-      if (hasError) {
-        errors.push({
-          id: p.id,
-          toolName: p.tool || "unknown",
-          timestamp: p.createdAt.toISOString(),
-          error: state?.error || state?.status || "Unknown error",
-          input: state?.input ? (typeof state.input === "string" ? state.input : JSON.stringify(state.input)) : undefined,
-          output: state?.output ? (typeof state.output === "string" ? state.output : JSON.stringify(state.output)) : undefined,
-        });
-      }
-    }
-    errors.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-
-    return c.json({ tokenData, toolStats, mcpStats, errors });
   });
 
   // Get messages for a session

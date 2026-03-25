@@ -1,55 +1,16 @@
-import { useMemo } from 'react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { useApp } from '../context/AppContext'
-import { Network } from 'lucide-react'
+import { useDashboard } from '../hooks/useApi'
+import { Network, Loader2 } from 'lucide-react'
 
 const MCP_COLORS = ['#ff7b72', '#ffa657', '#a371f7', '#79c0ff']
 
 export default function MCPHealth() {
-  const { activities } = useApp()
+  const { selectedSessionId } = useApp()
+  const { data: dashboardData, loading } = useDashboard(selectedSessionId)
 
-  const mcpStats = useMemo(() => {
-    const toolActivities = activities.filter(a => 
-      a.type === 'tool' && 
-      a.toolName && 
-      (a.toolName.startsWith('context7_') || a.toolName.startsWith('websearch_'))
-    )
-
-    // 按MCP工具分组
-    const mcpMap = new Map<string, { total: number; completed: number; errors: number; durations: number[] }>()
-    
-    toolActivities.forEach(a => {
-      const tool = a.toolName!
-      // 提取MCP工具基础名
-      const baseTool = tool.replace(/^mcp_/, '')
-      if (!mcpMap.has(baseTool)) {
-        mcpMap.set(baseTool, { total: 0, completed: 0, errors: 0, durations: [] })
-      }
-      const stats = mcpMap.get(baseTool)!
-      stats.total++
-      if (a.status === 'completed') stats.completed++
-      if (a.status === 'error' || a.error) stats.errors++
-      if (a.duration) stats.durations.push(a.duration)
-    })
-
-    // 转换为图表数据
-    return Array.from(mcpMap.entries()).map(([tool, stats]) => {
-      const avgDuration = stats.durations.length > 0
-        ? Math.round(stats.durations.reduce((a, b) => a + b, 0) / stats.durations.length)
-        : 0
-      const successRate = stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0
-      
-      return {
-        tool: tool.replace('context7_', '').replace('websearch_', ''),
-        toolFull: tool,
-        total: stats.total,
-        completed: stats.completed,
-        errors: stats.errors,
-        avgDuration,
-        successRate,
-      }
-    }).sort((a, b) => b.total - a.total)
-  }, [activities])
+  // 直接从 dashboardData 获取 mcpStats
+  const mcpStats = dashboardData?.mcpStats ?? []
 
   const totalCalls = mcpStats.reduce((a, b) => a + b.total, 0)
   const totalErrors = mcpStats.reduce((a, b) => a + b.errors, 0)
@@ -65,7 +26,11 @@ export default function MCPHealth() {
         </h3>
       </div>
 
-      {mcpStats.length === 0 ? (
+      {loading ? (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="w-6 h-6 animate-spin text-[var(--color-accent-cyan)]" />
+        </div>
+      ) : mcpStats.length === 0 ? (
         <div className="text-center text-[var(--color-text-secondary)] py-8 text-sm">
           <Network className="w-12 h-12 mx-auto mb-3 text-[var(--color-text-secondary)] opacity-50" />
           暂无MCP工具调用
@@ -116,8 +81,8 @@ export default function MCPHealth() {
           {/* 详细列表 */}
           <div className="mt-3 space-y-1">
             {mcpStats.map(mcp => (
-              <div key={mcp.toolFull} className="flex items-center justify-between text-xs bg-[var(--color-bg-tertiary)] px-2 py-1 rounded">
-                <span className="text-[var(--color-text-primary)]">{mcp.toolFull}</span>
+              <div key={mcp.tool} className="flex items-center justify-between text-xs bg-[var(--color-bg-tertiary)] px-2 py-1 rounded">
+                <span className="text-[var(--color-text-primary)]">{mcp.tool}</span>
                 <div className="flex gap-3">
                   <span className="text-[var(--color-text-secondary)]">{mcp.total}次</span>
                   <span className={mcp.successRate >= 80 ? "text-[var(--color-success)]" : "text-[var(--color-error)]"}>

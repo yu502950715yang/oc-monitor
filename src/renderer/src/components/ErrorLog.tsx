@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useApp } from '../context/AppContext'
+import { useDashboard } from '../hooks/useApi'
 import { XCircle } from 'lucide-react'
 
 function formatRelativeTime(isoString: string): string {
@@ -22,25 +23,22 @@ function formatRelativeTime(isoString: string): string {
 }
 
 export default function ErrorLog() {
-  const { activities } = useApp()
+  const { selectedSessionId } = useApp()
+  const { data: dashboardData, loading } = useDashboard(selectedSessionId)
   const [filterTool, setFilterTool] = useState<string>('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
-  const errorActivities = useMemo(() => {
-    return activities.filter(a => 
-      a.type === 'tool' && 
-      (a.status === 'error' || a.error)
-    ).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-  }, [activities])
+  // 从 dashboardData 获取错误列表（已按时间排序）
+  const errors = dashboardData?.errors || []
 
   const toolNames = useMemo(() => {
-    const tools = new Set(errorActivities.map(a => a.toolName).filter(Boolean))
+    const tools = new Set(errors.map(e => e.toolName).filter(Boolean))
     return ['all', ...Array.from(tools)]
-  }, [errorActivities])
+  }, [errors])
 
   const filteredErrors = filterTool === 'all'
-    ? errorActivities
-    : errorActivities.filter(a => a.toolName === filterTool)
+    ? errors
+    : errors.filter(e => e.toolName === filterTool)
 
   return (
     <div className="bg-[var(--color-card)] rounded-xl border border-[var(--color-border)] p-6 shadow-lg">
@@ -48,7 +46,7 @@ export default function ErrorLog() {
         <h3 className="text-lg font-semibold text-[var(--color-text-primary)] flex items-center gap-2">
           <XCircle className="w-5 h-5 text-[var(--color-error)]" />
           错误日志
-          <span className="ml-2 text-xs text-[var(--color-error)]">({errorActivities.length})</span>
+          <span className="ml-2 text-xs text-[var(--color-error)]">({errors.length})</span>
         </h3>
         <select
           value={filterTool}
@@ -63,55 +61,60 @@ export default function ErrorLog() {
         </select>
       </div>
 
-      {filteredErrors.length === 0 ? (
+      {loading ? (
+        <div className="text-center text-[var(--color-text-secondary)] py-8 text-sm">
+          <div className="w-6 h-6 border-2 border-[var(--color-text-secondary)] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          加载中...
+        </div>
+      ) : filteredErrors.length === 0 ? (
         <div className="text-center text-[var(--color-text-secondary)] py-8 text-sm">
           <XCircle className="w-12 h-12 mx-auto mb-3 text-[var(--color-text-secondary)] opacity-50" />
-          {errorActivities.length === 0 ? '暂无错误' : '无匹配错误'}
+          {errors.length === 0 ? '暂无错误' : '无匹配错误'}
         </div>
       ) : (
         <div className="space-y-2 max-h-96 overflow-y-auto">
-          {filteredErrors.map(activity => (
+          {filteredErrors.map(error => (
             <div
-              key={activity.id}
+              key={error.id}
               className="bg-[var(--color-bg-tertiary)] rounded-lg border border-[var(--color-border)] overflow-hidden"
             >
               <div 
                 className="px-3 py-2 flex items-center justify-between cursor-pointer hover:bg-[var(--color-bg-hover)]/50"
-                onClick={() => setExpandedId(expandedId === activity.id ? null : activity.id)}
+                onClick={() => setExpandedId(expandedId === error.id ? null : error.id)}
               >
                 <div className="flex items-center gap-2">
                   <XCircle className="w-3.5 h-3.5 text-[var(--color-error)]" />
-                  <span className="text-sm text-[var(--color-text-primary)]">{activity.toolName}</span>
-                  <span className="text-xs text-[var(--color-text-secondary)]">{activity.content?.slice(0, 30)}</span>
+                  <span className="text-sm text-[var(--color-text-primary)]">{error.toolName}</span>
+                  <span className="text-xs text-[var(--color-text-secondary)]">{error.error?.slice(0, 30)}</span>
                 </div>
                 <span className="text-xs text-[var(--color-text-secondary)]">
-                  {formatRelativeTime(activity.timestamp)}
+                  {formatRelativeTime(error.timestamp)}
                 </span>
               </div>
               
-              {expandedId === activity.id && (
+              {expandedId === error.id && (
                 <div className="px-3 py-2 border-t border-[var(--color-border)] bg-[var(--color-bg-secondary)]">
-                  {activity.error && (
+                  {error.error && (
                     <div className="mb-2">
                       <div className="text-xs text-[var(--color-text-secondary)] mb-1">错误信息</div>
                       <pre className="text-xs text-[var(--color-error)] bg-[var(--color-bg-tertiary)] p-2 rounded overflow-x-auto whitespace-pre-wrap">
-                        {activity.error}
+                        {error.error}
                       </pre>
                     </div>
                   )}
-                  {activity.input && (
+                  {error.input && (
                     <div className="mb-2">
                       <div className="text-xs text-[var(--color-text-secondary)] mb-1">输入</div>
                       <pre className="text-xs text-[var(--color-text-primary)] bg-[var(--color-bg-tertiary)] p-2 rounded overflow-x-auto whitespace-pre-wrap">
-                        {activity.input}
+                        {error.input}
                       </pre>
                     </div>
                   )}
-                  {activity.output && (
+                  {error.output && (
                     <div>
                       <div className="text-xs text-[var(--color-text-secondary)] mb-1">输出</div>
                       <pre className="text-xs text-[var(--color-text-primary)] bg-[var(--color-bg-tertiary)] p-2 rounded overflow-x-auto whitespace-pre-wrap">
-                        {activity.output}
+                        {error.output}
                       </pre>
                     </div>
                   )}

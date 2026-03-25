@@ -24,8 +24,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
         return ipcRenderer.invoke('api:fetch', url)
       },
       getSession: (id: string) => ipcRenderer.invoke('api:fetch', `/api/sessions/${id}`),
-      getActivity: (id: string) => ipcRenderer.invoke('api:fetch', `/api/sessions/${id}/activity`),
+      getActivity: (id: string, limit?: number) => {
+        const url = limit ? `/api/sessions/${id}/activity?limit=${limit}` : `/api/sessions/${id}/activity`
+        return ipcRenderer.invoke('api:fetch', url)
+      },
       getSessionTree: (id: string) => ipcRenderer.invoke('api:fetch', `/api/sessions/${id}/tree`),
+      getSessionStats: (id: string) => ipcRenderer.invoke('api:fetch', `/api/sessions/${id}/stats`),
+      getDashboard: (id: string) => ipcRenderer.invoke('api:fetch', `/api/sessions/${id}/dashboard`),
       getPlan: () => ipcRenderer.invoke('api:fetch', '/api/plan'),
       health: () => ipcRenderer.invoke('api:fetch', '/api/health'),
     },
@@ -44,8 +49,10 @@ declare global {
       api: {
         getSessions: (limit?: number) => Promise<any>
         getSession: (id: string) => Promise<any>
-        getActivity: (id: string) => Promise<any>
+        getActivity: (id: string, limit?: number) => Promise<any>
         getSessionTree: (id: string) => Promise<any>
+        getSessionStats: (id: string) => Promise<any>
+        getDashboard: (id: string) => Promise<any>
         getPlan: () => Promise<any>
         health: () => Promise<any>
       }
