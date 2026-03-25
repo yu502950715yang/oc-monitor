@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { useApp } from '../context/AppContext'
 import { useDashboard } from '../hooks/useApi'
-import { Wrench, BarChart3, Loader2 } from 'lucide-react'
+import { Wrench, Loader2 } from 'lucide-react'
 
 const COLORS = [
   '#58a6ff', '#3fb950', '#d29922', '#f85149', '#a371f7', 
@@ -46,7 +46,7 @@ export default function ToolPerformance() {
     <div className="bg-[var(--color-card)] rounded-xl border border-[var(--color-border)] p-6 shadow-lg">
       <div className="flex items-center justify-between mb-6">
         <h3 className="text-lg font-semibold text-[var(--color-text-primary)] flex items-center gap-2">
-          <BarChart3 className="w-5 h-5 text-[var(--color-accent-purple)]" />
+          <Wrench className="w-5 h-5 text-[var(--color-accent-purple)]" />
           工具性能
         </h3>
         <div className="flex gap-3">
@@ -61,14 +61,6 @@ export default function ToolPerformance() {
               </option>
             ))}
           </select>
-          <button
-            onClick={refetch}
-            disabled={loading}
-            className="text-xs px-3 py-1.5 bg-gradient-to-r from-[var(--color-accent-blue)] to-[var(--color-accent-blue)] text-white rounded-lg hover:opacity-80 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
-          >
-            {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
-            刷新
-          </button>
         </div>
       </div>
 
@@ -119,14 +111,6 @@ export default function ToolPerformance() {
                       item?.fullName || ''
                     ]
                   }}
-                />
-                <Legend 
-                  layout="vertical" 
-                  align="right" 
-                  verticalAlign="middle"
-                  formatter={(value) => (
-                    <span className="text-[var(--color-text-secondary)] text-xs">{value}</span>
-                  )}
                 />
               </PieChart>
             </ResponsiveContainer>
