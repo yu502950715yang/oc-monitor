@@ -1,4 +1,5 @@
-import { useState, useCallback, useMemo, useRef, createPortal } from 'react'
+import { useState, useCallback, useMemo, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { formatRelativeTime } from '@/utils/format'
 import { 
   Terminal, FileText, CheckSquare, ArrowRightCircle, 
