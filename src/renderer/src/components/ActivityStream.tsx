@@ -300,12 +300,12 @@ export default function ActivityStream({ activities, sessionId }: ActivityStream
         <>
           {/* 点击遮罩关闭 */}
           <div 
-            className="fixed inset-0 z-[var(--z-popover)] pointer-events-none" 
+            className="fixed inset-0 z-[var(--z-popover)]" 
             onClick={closeAllDropdowns}
           />
           {/* Popover 面板 */}
           <div 
-            className="fixed z-[calc(var(--z-popover)+1)] pointer-events-auto bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg shadow-[var(--shadow-dark-lg)] py-1 min-w-[140px] max-h-[280px] overflow-y-auto animate-in fade-in zoom-in-95 duration-[var(--transition-base)]"
+            className="fixed z-[calc(var(--z-popover)+1)] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg shadow-[var(--shadow-dark-lg)] py-1 min-w-[140px] max-h-[280px] overflow-y-auto animate-in fade-in zoom-in-95 duration-[var(--transition-base)]"
             style={{ 
               top: popoverPosition.top, 
               left: popoverPosition.left,
