@@ -340,7 +340,6 @@ export function registerSessionRoutes(app: Hono) {
         tokenCount++;
       }
     }
-    console.log(`[Token Summary] tokenCount=${tokenCount}, totalTokens=${totalTokens}`);
 
     // 计算错误数量：type === "tool" 且 (state.status === "error" 或 state.error 存在)
     const errorCount = toolParts.filter(p => {
