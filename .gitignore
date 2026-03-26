@@ -43,4 +43,7 @@ coverage/
 
 # opencode
 .sisyphus/
-问题/
+
+# TypeScript build info
+tsconfig.node.tsbuildinfo
+tsconfig.tsbuildinfo
