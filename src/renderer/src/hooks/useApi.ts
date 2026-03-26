@@ -19,21 +19,6 @@ export interface Activity {
   sessionName?: string
 }
 
-// Activity 筛选参数接口（与后端 ActivityFilter 对应）
-export interface ActivityFilters {
-  // Parts 专用
-  type?: string[]
-  tool?: string[]
-  status?: string[]
-  subagentType?: string[]
-
-  // Messages 专用
-  role?: string[]
-
-  // 通用
-  agent?: string[]
-}
-
 export interface Plan {
   id: string
   name: string
@@ -115,7 +100,7 @@ export function useSession(id: string | null) {
 // 获取活动数据时的默认 limit（获取足够多的数据用于 StatsPanel 统计）
 const DEFAULT_ACTIVITY_LIMIT = 1000
 
-export function useActivity(id: string | null, filters?: ActivityFilters) {
+export function useActivity(id: string | null) {
   const [state, setState] = useState<ApiState<Activity[]>>({
     data: null,
     loading: true,
@@ -130,12 +115,12 @@ export function useActivity(id: string | null, filters?: ActivityFilters) {
     setState(prev => ({ ...prev, loading: true, error: null }))
     try {
       // 传递更大的 limit 以获取足够的活动数据进行统计
-      const result = await window.electronAPI.api.getActivity(id, DEFAULT_ACTIVITY_LIMIT, filters)
+      const result = await window.electronAPI.api.getActivity(id, DEFAULT_ACTIVITY_LIMIT)
       setState({ data: result, loading: false, error: null })
     } catch (err) {
       setState({ data: null, loading: false, error: err as Error })
     }
-  }, [id, filters])
+  }, [id])
 
   useEffect(() => {
     fetchActivity()

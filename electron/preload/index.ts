@@ -24,20 +24,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
         return ipcRenderer.invoke('api:fetch', url)
       },
       getSession: (id: string) => ipcRenderer.invoke('api:fetch', `/api/sessions/${id}`),
-      getActivity: (id: string, limit?: number, filters?: Record<string, string[] | undefined>) => {
-        const params = new URLSearchParams()
-        if (limit) params.set('limit', String(limit))
-        // 添加筛选参数
-        if (filters) {
-          if (filters.type?.length) params.set('type', filters.type.join(','))
-          if (filters.tool?.length) params.set('tool', filters.tool.join(','))
-          if (filters.status?.length) params.set('status', filters.status.join(','))
-          if (filters.role?.length) params.set('role', filters.role.join(','))
-          if (filters.agent?.length) params.set('agent', filters.agent.join(','))
-          if (filters.subagentType?.length) params.set('subagentType', filters.subagentType.join(','))
-        }
-        const queryString = params.toString()
-        const url = `/api/sessions/${id}/activity${queryString ? '?' + queryString : ''}`
+      getActivity: (id: string, limit?: number) => {
+        const url = limit ? `/api/sessions/${id}/activity?limit=${limit}` : `/api/sessions/${id}/activity`
         return ipcRenderer.invoke('api:fetch', url)
       },
       getSessionTree: (id: string) => ipcRenderer.invoke('api:fetch', `/api/sessions/${id}/tree`),
@@ -61,7 +49,7 @@ declare global {
       api: {
         getSessions: (limit?: number) => Promise<any>
         getSession: (id: string) => Promise<any>
-        getActivity: (id: string, limit?: number, filters?: Record<string, string[] | undefined>) => Promise<any>
+        getActivity: (id: string, limit?: number) => Promise<any>
         getSessionTree: (id: string) => Promise<any>
         getSessionStats: (id: string) => Promise<any>
         getDashboard: (id: string) => Promise<any>

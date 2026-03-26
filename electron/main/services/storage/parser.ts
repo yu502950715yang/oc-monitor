@@ -71,21 +71,6 @@ export interface PlanItem {
   line: number;
 }
 
-// 活动流筛选参数
-export interface ActivityFilter {
-  // Parts 专用筛选
-  type?: string[];        // -> PartMeta.type
-  tool?: string[];        // -> PartMeta.tool
-  status?: string[];      // -> PartMeta.state.status (从 state 对象解析)
-  subagentType?: string;  // -> 从 PartMeta.data 提取 input.subagent_type
-  
-  // Messages 专用筛选
-  role?: string[];        // -> MessageMeta.role
-  
-  // 通用筛选
-  agent?: string[];       // -> 从 PartMeta.data / MessageMeta.agent 提取
-}
-
 // SQLite database instance
 let db: Database | null = null;
 let sqlJsInitialized = false;
@@ -622,23 +607,15 @@ export async function getSession(id: string): Promise<SessionMeta | null> {
 }
 
 // Get all messages for a session
-export async function getMessagesForSession(sessionID: string, filters?: ActivityFilter): Promise<MessageMeta[]> {
+export async function getMessagesForSession(sessionID: string): Promise<MessageMeta[]> {
   await ensureDbFresh();
   
   // 先尝试 SQLite
   await initSqlite();
-  let messages: MessageMeta[] = [];
   if (db) {
-    messages = queryMessagesFromSqlite(sessionID);
+    const messages = queryMessagesFromSqlite(sessionID);
     if (messages.length > 0) {
-      // 应用筛选
-      if (filters) {
-        messages = filterMessages(messages, filters);
-      }
-      // 排序并限制返回最新的 100 条
-      return messages
-        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-        .slice(0, 100);
+      return messages;
     }
   }
   
@@ -651,61 +628,22 @@ export async function getMessagesForSession(sessionID: string, filters?: Activit
   }
 
   const files = listJsonFiles(messagePath, sessionID);
-  messages = files
+  return files
     .map((file) => parseMessageFile(file))
-    .filter((m): m is MessageMeta => m !== null);
-  
-  // 应用筛选
-  if (filters) {
-    messages = filterMessages(messages, filters);
-  }
-  
-  // 排序并限制返回最新的 100 条
-  return messages
-    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-    .slice(0, 100);
-}
-
-// 筛选 Messages (AND 逻辑)
-function filterMessages(messages: MessageMeta[], filters: ActivityFilter): MessageMeta[] {
-  return messages.filter((m) => {
-    // 筛选 role
-    if (filters.role && filters.role.length > 0) {
-      if (!m.role || !filters.role.includes(m.role)) {
-        return false;
-      }
-    }
-    
-    // 筛选 agent
-    if (filters.agent && filters.agent.length > 0) {
-      // MessageMeta 有 agent 字段
-      if (!m.agent || !filters.agent.includes(m.agent)) {
-        return false;
-      }
-    }
-    
-    return true;
-  });
+    .filter((m): m is MessageMeta => m !== null)
+    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 }
 
 // Get all parts for a session
-export async function getPartsForSession(sessionID: string, filters?: ActivityFilter): Promise<PartMeta[]> {
+export async function getPartsForSession(sessionID: string): Promise<PartMeta[]> {
   await ensureDbFresh();
   
   // 先尝试 SQLite
   await initSqlite();
-  let parts: PartMeta[] = [];
   if (db) {
-    parts = queryPartsFromSqlite(sessionID);
+    const parts = queryPartsFromSqlite(sessionID);
     if (parts.length > 0) {
-      // 应用筛选
-      if (filters) {
-        parts = filterParts(parts, filters);
-      }
-      // 排序并限制返回最新的 100 条
-      return parts
-        .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-        .slice(0, 100);
+      return parts;
     }
   }
   
@@ -718,68 +656,10 @@ export async function getPartsForSession(sessionID: string, filters?: ActivityFi
   }
 
   const files = listJsonFiles(partPath, sessionID);
-  parts = files
+  return files
     .map((file) => parsePartFile(file))
-    .filter((p): p is PartMeta => p !== null);
-  
-  // 应用筛选
-  if (filters) {
-    parts = filterParts(parts, filters);
-  }
-  
-  // 排序并限制返回最新的 100 条
-  return parts
-    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-    .slice(0, 100);
-}
-
-// 筛选 Parts (AND 逻辑)
-function filterParts(parts: PartMeta[], filters: ActivityFilter): PartMeta[] {
-  return parts.filter((p) => {
-    // 筛选 type
-    if (filters.type && filters.type.length > 0) {
-      if (!p.type || !filters.type.includes(p.type)) {
-        return false;
-      }
-    }
-    
-    // 筛选 tool
-    if (filters.tool && filters.tool.length > 0) {
-      if (!p.tool || !filters.tool.includes(p.tool)) {
-        return false;
-      }
-    }
-    
-    // 筛选 status (从 state 对象中提取)
-    if (filters.status && filters.status.length > 0) {
-      const partData = p.data as any;
-      const state = partData?.state || p.state;
-      const status = state?.status;
-      if (!status || !filters.status.includes(status)) {
-        return false;
-      }
-    }
-    
-    // 筛选 subagentType (从 data.input.subagent_type 提取)
-    if (filters.subagentType) {
-      const partData = p.data as any;
-      const subagentType = partData?.input?.subagent_type;
-      if (subagentType !== filters.subagentType) {
-        return false;
-      }
-    }
-    
-    // 筛选 agent (从 data.agent 提取)
-    if (filters.agent && filters.agent.length > 0) {
-      const partData = p.data as any;
-      const agent = partData?.agent;
-      if (!agent || !filters.agent.includes(agent)) {
-        return false;
-      }
-    }
-    
-    return true;
-  });
+    .filter((p): p is PartMeta => p !== null)
+    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
 }
 
 // Get messages for multiple sessions
