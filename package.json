@@ -45,6 +45,7 @@
   "build": {
     "appId": "com.ocmonitor.app",
     "productName": "OCMonitor",
+    "icon": "build/icon",
     "directories": {
       "output": "release"
     },
