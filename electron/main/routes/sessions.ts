@@ -321,10 +321,6 @@ export function registerSessionRoutes(app: Hono) {
         const t = Number(tokens.total) || 0;
         totalTokens += t;
         tokenCount++;
-        // 打印调试信息
-        if (tokenCount <= 5) {
-          console.log(`[Token Debug ${tokenCount}] total=${t}, input=${tokens.input}, output=${tokens.output}, reasoning=${tokens.reasoning}, cache=${JSON.stringify(tokens.cache)}`);
-        }
       }
     }
     console.log(`[Token Summary] tokenCount=${tokenCount}, totalTokens=${totalTokens}`);
