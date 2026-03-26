@@ -1,8 +1,8 @@
-import { useState, useCallback, useMemo, useRef, createPortal } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { formatRelativeTime } from '@/utils/format'
 import { 
   Terminal, FileText, CheckSquare, ArrowRightCircle, 
-  XCircle, Brain, ChevronDown, ChevronRight, Activity, X, Check
+  XCircle, Brain, ChevronDown, ChevronRight, Activity, X
 } from 'lucide-react'
 
 // 筛选参数接口
@@ -97,11 +97,6 @@ export default function ActivityStream({ activities, sessionId }: ActivityStream
   const [filters, setFilters] = useState<ActivityFilters>({})
   const [showClearButton, setShowClearButton] = useState(false)
   const [isDropdownOpen, setIsDropdownOpen] = useState<Record<string, boolean>>({})
-  // Popover 位置状态
-  const [popoverPosition, setPopoverPosition] = useState<{ top: number; left: number; width: number } | null>(null)
-  const [activeFilterKey, setActiveFilterKey] = useState<string | null>(null)
-  // 按钮引用
-  const filterButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map())
 
   const toggleExpand = useCallback((id: string) => {
     setExpandedIds(prev => {
@@ -167,31 +162,10 @@ export default function ActivityStream({ activities, sessionId }: ActivityStream
     setShowClearButton(false)
   }, [])
 
-  // 切换下拉菜单并计算位置
+  // 切换下拉菜单
   const toggleDropdown = useCallback((key: string) => {
-    const buttonRef = filterButtonRefs.current.get(key)
-    if (!buttonRef) {
-      setIsDropdownOpen(prev => ({ ...prev, [key]: !prev[key] }))
-      return
-    }
-    
-    const isOpening = !isDropdownOpen[key]
-    setIsDropdownOpen(prev => ({ ...prev, [key]: isOpening }))
-    
-    if (isOpening) {
-      // 计算按钮位置
-      const rect = buttonRef.getBoundingClientRect()
-      setPopoverPosition({
-        top: rect.bottom + 4, // 按钮下方 4px
-        left: rect.left,
-        width: rect.width,
-      })
-      setActiveFilterKey(key)
-    } else {
-      setPopoverPosition(null)
-      setActiveFilterKey(null)
-    }
-  }, [isDropdownOpen])
+    setIsDropdownOpen(prev => ({ ...prev, [key]: !prev[key] }))
+  }, [])
 
   // 关闭所有下拉菜单
   const closeAllDropdowns = useCallback(() => {
@@ -261,22 +235,39 @@ export default function ActivityStream({ activities, sessionId }: ActivityStream
             options.length > 0 && (
               <div key={key} className="relative flex-shrink-0">
                 <button
-                  ref={(el) => { if (el) filterButtonRefs.current.set(key, el) }}
                   onClick={() => toggleDropdown(key)}
-                  className={`px-2 py-1 text-xs rounded-md border transition-all duration-[var(--transition-base)] flex items-center gap-1.5 ${
+                  className={`px-2 py-1 text-xs rounded border transition-colors flex items-center gap-1 ${
                     filters[key]?.length
-                      ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)] shadow-sm'
-                      : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] border-[var(--color-border)] hover:bg-[var(--color-bg-tertiary)] hover:border-[var(--color-text-muted)]'
+                      ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]'
+                      : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] border-[var(--color-border)] hover:bg-[var(--color-bg-tertiary)]'
                   }`}
                 >
                   {label}
                   {filters[key] && filters[key].length > 0 && (
-                    <span className="ml-0.5 min-w-[16px] h-4 rounded-full bg-white/20 text-[10px] flex items-center justify-center">
+                    <span className="ml-0.5 w-4 h-4 rounded-full bg-white/20 text-[10px] flex items-center justify-center">
                       {filters[key]?.length}
                     </span>
                   )}
-                  <ChevronDown className={`w-3 h-3 transition-transform duration-[var(--transition-base)] ${isDropdownOpen[key] ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-3 h-3 transition-transform ${isDropdownOpen[key] ? 'rotate-180' : ''}`} />
                 </button>
+                {isDropdownOpen[key] && (
+                  <div className="absolute top-full left-0 mt-1 z-50 bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg shadow-lg py-1 min-w-[120px] max-h-[200px] overflow-y-auto">
+                    {options.map(option => (
+                      <label
+                        key={option}
+                        className="flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={filters[key]?.includes(option) || false}
+                          onChange={() => handleFilterChange(key, option)}
+                          className="w-3 h-3 rounded border-[var(--color-border)]"
+                        />
+                        {option}
+                      </label>
+                    ))}
+                  </div>
+                )}
               </div>
             )
           ))}
@@ -285,7 +276,7 @@ export default function ActivityStream({ activities, sessionId }: ActivityStream
           {showClearButton && (
             <button
               onClick={clearFilters}
-              className="flex items-center gap-1 px-2 py-1 text-xs rounded-md border border-[var(--color-error)] text-[var(--color-error)] hover:bg-[var(--color-error-bg)] transition-colors flex-shrink-0"
+              className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-[var(--color-error)] text-[var(--color-error)] hover:bg-[var(--color-error-bg)] transition-colors flex-shrink-0"
             >
               <X className="w-3 h-3" />
               清除筛选
@@ -294,53 +285,12 @@ export default function ActivityStream({ activities, sessionId }: ActivityStream
         </div>
       )}
 
-      {/* Popover 渲染到 body (使用 Portal 避免被遮挡) */}
-      {popoverPosition && activeFilterKey && createPortal(
-        <>
-          {/* 点击遮罩关闭 */}
-          <div 
-            className="fixed inset-0 z-[var(--z-popover)]" 
-            onClick={closeAllDropdowns}
-          />
-          {/* Popover 面板 */}
-          <div 
-            className="fixed z-[calc(var(--z-popover)+1)] bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-lg shadow-[var(--shadow-dark-lg)] py-1 min-w-[140px] max-h-[280px] overflow-y-auto animate-in fade-in zoom-in-95 duration-[var(--transition-base)]"
-            style={{ 
-              top: popoverPosition.top, 
-              left: popoverPosition.left,
-              width: Math.max(popoverPosition.width, 140),
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {filterConfig.find(f => f.key === activeFilterKey)?.options.map(option => {
-              const key = activeFilterKey as keyof ActivityFilters
-              const isSelected = filters[key]?.includes(option) || false
-              return (
-                <button
-                  key={option}
-                  onClick={() => handleFilterChange(key, option)}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-xs text-left transition-colors duration-[var(--transition-fast)] ${
-                    isSelected
-                      ? 'text-[var(--color-primary)] bg-[var(--color-primary-bg)]'
-                      : 'text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]'
-                  }`}
-                >
-                  <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
-                    isSelected
-                      ? 'bg-[var(--color-primary)] border-[var(--color-primary)]'
-                      : 'border-[var(--color-border)]'
-                  }`}>
-                    {isSelected && (
-                      <Check className="w-3 h-3 text-white" />
-                    )}
-                  </div>
-                  <span className="truncate">{option}</span>
-                </button>
-              )
-            })}
-          </div>
-        </>,
-        document.body
+      {/* 点击外部关闭下拉 */}
+      {Object.values(isDropdownOpen).some(v => v) && (
+        <div 
+          className="fixed inset-0 z-40" 
+          onClick={closeAllDropdowns}
+        />
       )}
 
       {/* 活动列表 */}
