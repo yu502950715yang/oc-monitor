@@ -170,7 +170,7 @@ function AppContent() {
 
         {/* 内容区域 */}
         {activeView === 'stream' ? (
-          <ActivityStream activities={activities} />
+          <ActivityStream activities={activities} sessionId={selectedSessionId} />
         ) : activeView === 'tree' ? (
           <ActivityTree sessions={getSessionNodes()} />
         ) : (

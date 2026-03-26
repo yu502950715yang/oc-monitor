@@ -10,9 +10,16 @@ import {
   getChildSessions,
   getStorageInfo,
   type SessionMeta,
+  type ActivityFilter,
 } from "../services/storage/parser";
 import { formatCurrentAction } from "../logic/activityLogic";
 import log from "electron-log";
+
+// 解析逗号分隔的多值参数
+function parseFilterParam(param: string | undefined): string[] {
+  if (!param) return [];
+  return param.split(',').map(v => v.trim()).filter(v => v);
+}
 
 const MAX_SESSIONS_LIMIT = 20;
 const MAX_MESSAGES_LIMIT = 100;
@@ -128,8 +135,18 @@ export function registerSessionRoutes(app: Hono) {
       );
     }
 
-    const messages = await getMessagesForSession(sessionID);
-    const parts = await getPartsForSession(sessionID);
+    // 筛选参数解析
+    const filters: ActivityFilter = {
+      type: parseFilterParam(c.req.query('type')),
+      tool: parseFilterParam(c.req.query('tool')),
+      status: parseFilterParam(c.req.query('status')),
+      role: parseFilterParam(c.req.query('role')),
+      agent: parseFilterParam(c.req.query('agent')),
+      subagentType: parseFilterParam(c.req.query('subagentType'))[0],
+    };
+
+    const messages = await getMessagesForSession(sessionID, filters);
+    const parts = await getPartsForSession(sessionID, filters);
 
     const messageList = messages.slice(-maxItems).map((m) => {
       // 尝试从多个位置提取消息内容

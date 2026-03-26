@@ -1,9 +1,19 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { formatRelativeTime } from '@/utils/format'
 import { 
   Terminal, FileText, CheckSquare, ArrowRightCircle, 
-  XCircle, Brain, ChevronDown, ChevronRight, Activity
+  XCircle, Brain, ChevronDown, ChevronRight, Activity, X
 } from 'lucide-react'
+
+// 筛选参数接口
+interface ActivityFilters {
+  type?: string[]
+  tool?: string[]
+  status?: string[]
+  role?: string[]
+  agent?: string[]
+  subagentType?: string[]
+}
 
 // Token信息接口
 export interface TokenInfo {
@@ -54,6 +64,7 @@ export interface Activity {
 
 interface ActivityStreamProps {
   activities: Activity[]
+  sessionId?: string | null
 }
 
 // 工具类型对应的颜色 - 使用设计系统变量
@@ -81,8 +92,11 @@ const typeIconMap = {
   reasoning: { label: '推理', color: 'text-[#79c0ff]', bg: 'bg-[#79c0ff]/10', Icon: Brain },
 }
 
-export default function ActivityStream({ activities }: ActivityStreamProps) {
+export default function ActivityStream({ activities, sessionId }: ActivityStreamProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  const [filters, setFilters] = useState<ActivityFilters>({})
+  const [showClearButton, setShowClearButton] = useState(false)
+  const [isDropdownOpen, setIsDropdownOpen] = useState<Record<string, boolean>>({})
 
   const toggleExpand = useCallback((id: string) => {
     setExpandedIds(prev => {
@@ -96,6 +110,113 @@ export default function ActivityStream({ activities }: ActivityStreamProps) {
     })
   }, [])
 
+  // 从活动数据中提取下拉选项
+  const filterOptions = useMemo(() => {
+    const types = new Set<string>()
+    const tools = new Set<string>()
+    const statuses = new Set<string>()
+    const roles = new Set<string>()
+    const agents = new Set<string>()
+    const subagentTypes = new Set<string>()
+
+    activities.forEach(activity => {
+      if (activity.type) types.add(activity.type)
+      if (activity.toolName) tools.add(activity.toolName)
+      if (activity.status) statuses.add(activity.status)
+      if (activity.role) roles.add(activity.role)
+      if (activity.agent) agents.add(activity.agent)
+      if (activity.subagentType) subagentTypes.add(activity.subagentType)
+    })
+
+    return {
+      type: Array.from(types).sort(),
+      tool: Array.from(tools).sort(),
+      status: Array.from(statuses).sort(),
+      role: Array.from(roles).sort(),
+      agent: Array.from(agents).sort(),
+      subagentType: Array.from(subagentTypes).sort(),
+    }
+  }, [activities])
+
+  // 处理筛选变更
+  const handleFilterChange = useCallback((key: keyof ActivityFilters, value: string) => {
+    setFilters(prev => {
+      const current = prev[key] || []
+      const newValues = current.includes(value)
+        ? current.filter(v => v !== value)
+        : [...current, value]
+      
+      const newFilters = newValues.length > 0
+        ? { ...prev, [key]: newValues }
+        : { ...prev }
+      delete newFilters[key]
+      
+      return newFilters
+    })
+    setShowClearButton(true)
+  }, [])
+
+  // 清除所有筛选
+  const clearFilters = useCallback(() => {
+    setFilters({})
+    setShowClearButton(false)
+  }, [])
+
+  // 切换下拉菜单
+  const toggleDropdown = useCallback((key: string) => {
+    setIsDropdownOpen(prev => ({ ...prev, [key]: !prev[key] }))
+  }, [])
+
+  // 关闭所有下拉菜单
+  const closeAllDropdowns = useCallback(() => {
+    setIsDropdownOpen({})
+  }, [])
+
+  // 前端筛选活动数据
+  const displayActivities = useMemo(() => {
+    if (Object.keys(filters).length === 0) {
+      return activities
+    }
+
+    return activities.filter(activity => {
+      // 类型筛选（工具调用）
+      if (filters.type?.length && activity.type) {
+        if (!filters.type.includes(activity.type)) return false
+      }
+      // 工具筛选
+      if (filters.tool?.length && activity.toolName) {
+        if (!filters.tool.includes(activity.toolName)) return false
+      }
+      // 状态筛选
+      if (filters.status?.length && activity.status) {
+        if (!filters.status.includes(activity.status)) return false
+      }
+      // 角色筛选（消息）
+      if (filters.role?.length && activity.role) {
+        if (!filters.role.includes(activity.role)) return false
+      }
+      // 智能体筛选
+      if (filters.agent?.length && activity.agent) {
+        if (!filters.agent.includes(activity.agent)) return false
+      }
+      // 子智能体筛选
+      if (filters.subagentType?.length && activity.subagentType) {
+        if (!filters.subagentType.includes(activity.subagentType)) return false
+      }
+      return true
+    })
+  }, [activities, filters])
+
+  // 下拉选项映射
+  const filterConfig: { key: keyof ActivityFilters; label: string; options: string[] }[] = [
+    { key: 'type', label: '类型', options: filterOptions.type },
+    { key: 'tool', label: '工具', options: filterOptions.tool },
+    { key: 'status', label: '状态', options: filterOptions.status },
+    { key: 'role', label: '角色', options: filterOptions.role },
+    { key: 'agent', label: '智能体', options: filterOptions.agent },
+    { key: 'subagentType', label: '子智能体', options: filterOptions.subagentType },
+  ]
+
   return (
     <div className="flex-1 bg-[var(--color-bg-primary)] flex flex-col min-h-0">
       {/* 标题 */}
@@ -107,14 +228,91 @@ export default function ActivityStream({ activities }: ActivityStreamProps) {
         </div>
       </div>
 
+      {/* 筛选栏 */}
+      {sessionId && (
+        <div className="px-4 py-2 border-b border-[var(--color-border)] flex items-center gap-2 flex-shrink-0 overflow-x-auto">
+          {filterConfig.map(({ key, label, options }) => (
+            options.length > 0 && (
+              <div key={key} className="relative flex-shrink-0">
+                <button
+                  onClick={() => toggleDropdown(key)}
+                  className={`px-2 py-1 text-xs rounded border transition-colors flex items-center gap-1 ${
+                    filters[key]?.length
+                      ? 'bg-[var(--color-primary)] text-white border-[var(--color-primary)]'
+                      : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-secondary)] border-[var(--color-border)] hover:bg-[var(--color-bg-tertiary)]'
+                  }`}
+                >
+                  {label}
+                  {filters[key] && filters[key].length > 0 && (
+                    <span className="ml-0.5 w-4 h-4 rounded-full bg-white/20 text-[10px] flex items-center justify-center">
+                      {filters[key]?.length}
+                    </span>
+                  )}
+                  <ChevronDown className={`w-3 h-3 transition-transform ${isDropdownOpen[key] ? 'rotate-180' : ''}`} />
+                </button>
+                {isDropdownOpen[key] && (
+                  <div className="absolute top-full left-0 mt-1 z-50 bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg shadow-lg py-1 min-w-[120px] max-h-[200px] overflow-y-auto">
+                    {options.map(option => (
+                      <label
+                        key={option}
+                        className="flex items-center gap-2 px-3 py-1.5 text-xs text-[var(--color-text-primary)] hover:bg-[var(--color-bg-hover)] cursor-pointer"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={filters[key]?.includes(option) || false}
+                          onChange={() => handleFilterChange(key, option)}
+                          className="w-3 h-3 rounded border-[var(--color-border)]"
+                        />
+                        {option}
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          ))}
+          
+          {/* 清除筛选按钮 */}
+          {showClearButton && (
+            <button
+              onClick={clearFilters}
+              className="flex items-center gap-1 px-2 py-1 text-xs rounded border border-[var(--color-error)] text-[var(--color-error)] hover:bg-[var(--color-error-bg)] transition-colors flex-shrink-0"
+            >
+              <X className="w-3 h-3" />
+              清除筛选
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* 点击外部关闭下拉 */}
+      {Object.values(isDropdownOpen).some(v => v) && (
+        <div 
+          className="fixed inset-0 z-40" 
+          onClick={closeAllDropdowns}
+        />
+      )}
+
       {/* 活动列表 */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {activities.length === 0 ? (
-          <div className="text-center text-[var(--color-text-secondary)] text-sm py-8">
-            暂无活动
-          </div>
+        {displayActivities.length === 0 ? (
+          showClearButton ? (
+            <div className="text-center py-8">
+              <div className="text-[var(--color-text-secondary)] text-sm mb-3">无匹配结果</div>
+              <button
+                onClick={clearFilters}
+                className="px-3 py-1.5 text-xs rounded bg-[var(--color-primary)] text-white hover:opacity-80 transition-opacity"
+              >
+                清除筛选
+              </button>
+            </div>
+          ) : (
+            <div className="text-center text-[var(--color-text-secondary)] text-sm py-8">
+              暂无活动
+            </div>
+          )
         ) : (
-          activities.map((activity) => {
+          displayActivities.map((activity) => {
             // 如果是工具调用，根据工具类型显示不同颜色
             let typeInfo = typeIconMap[activity.type]
             if (activity.type === 'tool' && activity.toolName) {
