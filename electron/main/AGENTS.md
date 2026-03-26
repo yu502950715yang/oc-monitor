@@ -31,5 +31,5 @@ Electron 主进程后端，提供 HTTP API 服务和数据解析，监听 OpenCo
 1. **空 Catch 块** - `parser.ts:237,284` JSON 解析错误被静默吞掉
 2. **过度使用 any** - sessions.ts 大量 `(as any)` 类型断言，activityLogic.ts 多处 `data as any`
 3. **生产环境调试** - sessions.ts 和 activityLogic.ts 有未移除的 console.log/debug
-4. **备份文件未清理** - `parser.ts.bak` 仍存在于目录中
+4. **备份文件未清理** - `parser.ts.bak`, `sessions.ts.bak` 仍存在于目录中
 5. **SQL 注入风险** - `sessions.ts:228` 直接拼接 sessionID 到 SQL 字符串

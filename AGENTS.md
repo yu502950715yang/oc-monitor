@@ -1,7 +1,7 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-03-24
-**Commit:** 4b2a63e
+**Generated:** 2026-03-26
+**Commit:** 1354aef
 **Branch:** main
 
 ## OVERVIEW
@@ -76,9 +76,12 @@ OC 监控助手 — 基于 Electron + React 19 的桌面应用，实时监控 Op
    - `ActivityStream.tsx:105`
 3. **过度使用 `any`** — preload/index.ts 8处, server.ts 4处
 4. **`as any` 类型断言** — sessions.ts 9处, activityLogic.ts 7处
-5. **备份文件未清理** — `parser.ts.bak` 应删除
+5. **备份文件未清理** — `parser.ts.bak`, `sessions.ts.bak` 应删除
 6. **SQL 注入风险** — `parser.ts:228,271` 直接拼接 sessionID 到 SQL（仅简单转义）
 7. **类型推断不严格** — `useApi.ts` 多处 `any[]` 参数
+8. **无测试框架** — 项目未配置任何测试框架 (Jest/Vitest)
+9. **无 CI/CD** — 无 GitHub Actions 或其他自动化流水线
+10. **lint 脚本失效** — package.json 有 lint 命令但无 ESLint 配置
 
 ## UNIQUE STYLES
 
@@ -104,3 +107,5 @@ npm run typecheck     # TypeScript 类型检查
 - 无 ESLint/Prettier 配置
 - 前端源码嵌套: `src/renderer/src/` (非标准 src/)
 - 构建: electron-builder (NSIS/DMG)
+- 根目录杂项: `fix.js` (用途不明), `.sisyphus/` (任务规划)
+- 开发效率: electron:dev 每次全量编译 TypeScript
