@@ -13,7 +13,7 @@ const COLORS = [
 
 export default function ToolPerformance() {
   const { selectedSessionId } = useApp()
-  const { data: dashboardData, loading, refetch } = useDashboard(selectedSessionId)
+  const { data: dashboardData, loading } = useDashboard(selectedSessionId)
   const [filterTool, setFilterTool] = useState<string>('all')
 
   // 从 dashboardData 获取 toolStats 数据

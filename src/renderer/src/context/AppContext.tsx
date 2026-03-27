@@ -315,7 +315,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   })
 
   const isLoading = sessionsLoading || planLoading || activityLoading
-  const error = sessionsError || planError
+  const error = (sessionsError || planError)?.message || null
 
   const setSelectedSession = useCallback((id: string | null) => {
     setSelectedSessionId(id)

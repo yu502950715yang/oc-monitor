@@ -8,6 +8,8 @@ import {
   X,
   Plus,
   Trash2,
+  Info,
+  Monitor,
 } from 'lucide-react'
 
 // Props 接口
@@ -26,8 +28,18 @@ interface McpService {
 // 不可删除的 MCP 服务列表（内置 + 用户配置）
 const nonDeletableMcpServices = ['websearch', 'context7', 'grep_app', 'playwright']
 
+// 菜单配置
+const menuItems = [
+  { id: 'mcp', label: 'MCP服务', icon: Server },
+  { id: 'about', label: '关于', icon: Info },
+] as const
+type MenuId = typeof menuItems[number]['id']
+
 export default function SettingsPanel({ onClose }: SettingsPanelProps) {
   const { data: services, loading: servicesLoading, error: servicesError, refetch: refetchServices } = useMcpServices()
+
+  // 当前选中的菜单
+  const [activeSection, setActiveSection] = useState<MenuId>('mcp')
 
   // 添加 MCP 服务相关状态
   const [showAddModal, setShowAddModal] = useState(false)
@@ -179,11 +191,27 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
     )
   }
 
+  // About 页面组件
+  function AboutView() {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
+        <div className="w-16 h-16 rounded-xl bg-[var(--color-primary)]/10 flex items-center justify-center">
+          <Monitor className="w-8 h-8 text-[var(--color-primary)]" />
+        </div>
+        <div>
+          <h2 className="text-xl font-semibold text-[var(--color-text-primary)]">OC 监控助手</h2>
+          <p className="text-sm text-[var(--color-text-secondary)] mt-1">版本 1.0.0</p>
+        </div>
+        <p className="text-sm text-[var(--color-text-muted)] max-w-xs">实时监控 OpenCode 智能体活动的桌面应用</p>
+      </div>
+    )
+  }
+
   return (
-    <div className="bg-[var(--color-bg-secondary)] rounded-lg border border-[var(--color-border)] flex flex-col max-h-[80vh]">
-      {/* 标题 */}
+    <div className="w-[750px] bg-[var(--color-bg-secondary)] rounded-lg border border-[var(--color-border)] overflow-hidden">
+      {/* 顶部标题 - 占满整行 */}
       <div className="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between">
-        <h2 className="font-medium text-[var(--color-text-primary)]">MCP 服务</h2>
+        <h2 className="font-medium text-[var(--color-text-primary)]">设置</h2>
         <button
           type="button"
           onClick={onClose}
@@ -193,82 +221,119 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
         </button>
       </div>
 
-      {/* 内容区域 */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {/* 添加 MCP 服务按钮 */}
-        <button
-          type="button"
-          onClick={handleOpenAddModal}
-          className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90 transition-opacity"
-        >
-          <Plus className="w-4 h-4" />
-          <span>添加 MCP</span>
-        </button>
-
-        {!mcpServices || mcpServices.length === 0 ? (
-          <div className="text-center text-[var(--color-text-secondary)] text-sm py-8">
-            暂无 MCP 服务
-          </div>
-        ) : (
-          mcpServices.map((service) => {
-            const isNonDeletable = isNonDeletableService(service.name)
-
+      {/* 主体内容 - 左右布局 */}
+      <div className="flex h-[500px]">
+        {/* 左侧导航 */}
+        <div className="w-52 border-r border-[var(--color-border)] flex flex-col p-2">
+          {menuItems.map((item) => {
+            const Icon = item.icon
+            const isActive = activeSection === item.id
             return (
-              <div
-                key={service.name}
-                className="p-4 bg-[var(--color-bg-tertiary)] rounded-lg border border-[var(--color-border)] relative group"
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setActiveSection(item.id)}
+                className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors mb-1 ${
+                  isActive
+                    ? 'bg-[var(--color-primary)]/10 text-[var(--color-primary)]'
+                    : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]'
+                }`}
               >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <div className="p-1.5 rounded-md bg-[var(--color-primary)]/10">
-                      <Server className="w-4 h-4 text-[var(--color-primary)]" />
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="text-sm font-medium text-[var(--color-text-primary)] truncate">
-                        {service.displayName || service.name}
-                      </h3>
-                      <p className="text-xs text-[var(--color-text-secondary)] truncate">
-                        {service.name}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    {/* 删除按钮 */}
-                    {!isNonDeletable && (
-                      <button
-                        type="button"
-                        onClick={() => handleOpenDeleteConfirm(service.name, service.displayName || service.name)}
-                        className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-error)] opacity-0 group-hover:opacity-100 transition-all"
-                        title="删除 MCP 服务"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-1.5">
-                    <Plug className="w-3 h-3 text-[var(--color-text-secondary)]" />
-                    <span className="text-[var(--color-text-secondary)]">{service.type}</span>
-                  </div>
-                  <span className={service.enabled ? 'text-[var(--color-success)]' : 'text-[var(--color-text-secondary)]'}>
-                    {service.enabled ? '已启用' : '已禁用'}
-                  </span>
-                </div>
-              </div>
+                <Icon className="w-4 h-4" />
+                <span>{item.label}</span>
+              </button>
             )
-          })
+          })}
+        </div>
+
+      {/* 右侧内容区域 */}
+      <div className="flex-1 flex flex-col">
+        {/* 内容区域 */}
+        <div className="flex-1 overflow-y-auto p-4">
+          {activeSection === 'mcp' && (
+            <div className="space-y-3">
+              {/* 添加 MCP 服务按钮 */}
+              <button
+                type="button"
+                onClick={handleOpenAddModal}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90 transition-opacity"
+              >
+                <Plus className="w-4 h-4" />
+                <span>添加 MCP</span>
+              </button>
+
+              {!mcpServices || mcpServices.length === 0 ? (
+                <div className="text-center text-[var(--color-text-secondary)] text-sm py-8">
+                  暂无 MCP 服务
+                </div>
+              ) : (
+                mcpServices.map((service) => {
+                  const isNonDeletable = isNonDeletableService(service.name)
+
+                  return (
+                    <div
+                      key={service.name}
+                      className="p-4 bg-[var(--color-bg-tertiary)] rounded-lg border border-[var(--color-border)] relative group"
+                    >
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="p-1.5 rounded-md bg-[var(--color-primary)]/10">
+                            <Server className="w-4 h-4 text-[var(--color-primary)]" />
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="text-sm font-medium text-[var(--color-text-primary)] truncate">
+                              {service.displayName || service.name}
+                            </h3>
+                            <p className="text-xs text-[var(--color-text-secondary)] truncate">
+                              {service.name}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {/* 删除按钮 */}
+                          {!isNonDeletable && (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenDeleteConfirm(service.name, service.displayName || service.name)}
+                              className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-error)] opacity-0 group-hover:opacity-100 transition-all"
+                              title="删除 MCP 服务"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-1.5">
+                          <Plug className="w-3 h-3 text-[var(--color-text-secondary)]" />
+                          <span className="text-[var(--color-text-secondary)]">{service.type}</span>
+                        </div>
+                        <span className={service.enabled ? 'text-[var(--color-success)]' : 'text-[var(--color-text-secondary)]'}>
+                          {service.enabled ? '已启用' : '已禁用'}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+          )}
+
+          {activeSection === 'about' && <AboutView />}
+        </div>
+
+        {/* 统计信息 */}
+        {activeSection === 'mcp' && (
+          <div className="px-4 py-3 border-t border-[var(--color-border)] text-xs text-[var(--color-text-secondary)]">
+            <span>总服务: {mcpServices?.length || 0}</span>
+          </div>
         )}
       </div>
-
-      {/* 统计信息 */}
-      <div className="px-4 py-3 border-t border-[var(--color-border)] text-xs text-[var(--color-text-secondary)]">
-        <span>总服务: {mcpServices?.length || 0}</span>
       </div>
 
       {/* 添加 MCP 服务模态框 */}
-      {showAddModal && (
+        {showAddModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
           <div className="bg-[var(--color-bg-secondary)] rounded-lg border border-[var(--color-border)] w-72 p-4 shadow-xl">
             <h3 className="text-sm font-medium text-[var(--color-text-primary)] mb-4">

@@ -80,7 +80,7 @@ export default function Layout({ children }: LayoutProps) {
       {/* 设置弹框 */}
       {showSettings && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowSettings(false)}>
-          <div className="max-w-lg w-full mx-4" onClick={e => e.stopPropagation()}>
+          <div onClick={e => e.stopPropagation()}>
             <SettingsPanel onClose={() => setShowSettings(false)} />
           </div>
         </div>
