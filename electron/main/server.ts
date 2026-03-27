@@ -135,13 +135,17 @@ export function setAppInstance(app: any) {
   appInstance = app;
 }
 
-export async function handleApiRequest(path: string, method: string = 'GET'): Promise<{ status: number; data: any }> {
+export async function handleApiRequest(path: string, method: string = 'GET', body?: string): Promise<{ status: number; data: any }> {
   if (!appInstance) {
     return { status: 500, data: { error: 'SERVER_NOT_READY', message: 'Server not initialized' } };
   }
 
   try {
-    const req = new Request(`http://localhost${path}`, { method });
+    const req = new Request(`http://localhost:${PORT}${path}`, {
+      method,
+      headers: body ? { 'Content-Type': 'application/json' } : undefined,
+      body,
+    });
     const res = await appInstance.fetch(req);
     const data = await res.json();
     return { status: res.status, data };

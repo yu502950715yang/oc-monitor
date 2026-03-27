@@ -57,8 +57,8 @@ ipcMain.handle('app:getVersion', () => {
   return app.getVersion()
 })
 
-ipcMain.handle('api:fetch', async (_, path: string, method: string = 'GET') => {
-  const result = await handleApiRequest(path, method);
+ipcMain.handle('api:fetch', async (_, path: string, method: string = 'GET', body?: string) => {
+  const result = await handleApiRequest(path, method, body);
   // 如果状态码不是 2xx，抛出错误让前端捕获
   if (result.status >= 400) {
     throw new Error(result.data.message || result.data.error || 'API Error');

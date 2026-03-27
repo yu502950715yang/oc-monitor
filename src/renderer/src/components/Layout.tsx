@@ -1,5 +1,6 @@
 import { ReactNode, useState, useEffect } from 'react'
-import { Moon, Sun, Wifi } from 'lucide-react'
+import { Moon, Sun, Wifi, Settings } from 'lucide-react'
+import SettingsPanel from './SettingsPanel'
 
 interface LayoutProps {
   children: ReactNode
@@ -16,6 +17,8 @@ export default function Layout({ children }: LayoutProps) {
     }
     return 'dark'
   })
+
+  const [showSettings, setShowSettings] = useState(false)
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme)
@@ -39,6 +42,7 @@ export default function Layout({ children }: LayoutProps) {
             
             {/* 主题切换按钮 */}
             <button
+              type="button"
               onClick={toggleTheme}
               className="p-2 rounded-md bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-elevated)] transition-colors"
               aria-label={theme === 'dark' ? '切换到浅色模式' : '切换到深色模式'}
@@ -49,7 +53,17 @@ export default function Layout({ children }: LayoutProps) {
                 <Moon className="w-4 h-4 text-[var(--color-text-secondary)]" />
               )}
             </button>
-            
+
+            {/* 设置按钮 */}
+            <button
+              type="button"
+              onClick={() => setShowSettings(!showSettings)}
+              className="p-2 rounded-md bg-[var(--color-bg-tertiary)] hover:bg-[var(--color-bg-elevated)] transition-colors"
+              aria-label="打开设置"
+            >
+              <Settings className="w-4 h-4 text-[var(--color-text-secondary)]" />
+            </button>
+
             <div className="flex items-center gap-2">
               <Wifi className="w-3 h-3 text-[var(--color-success)]" />
               <span className="text-sm text-[var(--color-text-secondary)]">已连接</span>
@@ -62,6 +76,15 @@ export default function Layout({ children }: LayoutProps) {
       <main className="flex-1 flex overflow-hidden">
         {children}
       </main>
+
+      {/* 设置弹框 */}
+      {showSettings && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowSettings(false)}>
+          <div className="max-w-lg w-full mx-4" onClick={e => e.stopPropagation()}>
+            <SettingsPanel onClose={() => setShowSettings(false)} />
+          </div>
+        </div>
+      )}
 
       {/* 底部状态栏 */}
       <footer className="bg-[var(--color-bg-secondary)] border-t border-[var(--color-border)] px-4 py-2 flex-shrink-0">

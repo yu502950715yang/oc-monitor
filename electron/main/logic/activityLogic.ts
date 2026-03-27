@@ -1,4 +1,5 @@
 import type { PartMeta } from "../services/storage/parser";
+import { config } from "../config";
 
 const MAX_PATH_LENGTH = 40;
 
@@ -10,6 +11,12 @@ function truncatePath(path: string): string {
 }
 
 // 工具显示名称映射 (英文 -> 中文)
+const DEFAULT_MCP_NAMES: Record<string, string> = {
+  "context7_query-docs": "查询文档",
+  "context7_resolve-library-id": "解析库",
+  "websearch_web_search_exa": "网络搜索",
+};
+
 export const TOOL_DISPLAY_NAMES: Record<string, string> = {
   read: "读取",
   write: "写入",
@@ -23,10 +30,8 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
   subtask: "子任务",
   compaction: "压缩",
   file: "文件",
-  // MCP 工具
-  "context7_query-docs": "查询文档",
-  "context7_resolve-library-id": "解析库",
-  "websearch_web_search_exa": "网络搜索",
+  // MCP 工具：从配置读取，保留硬编码作为默认值
+  ...(config.mcp?.displayNames || DEFAULT_MCP_NAMES),
 };
 
 function getToolDisplayName(tool: string): string {

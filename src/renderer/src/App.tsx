@@ -133,7 +133,7 @@ function AppContent() {
       />
 
       {/* 中间主区域 */}
-      <div className="flex-1 flex flex-col h-full">
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
         {/* 视图切换标签 */}
         <div className="px-4 py-2 bg-[var(--color-bg-secondary)] border-b border-[var(--color-border)] flex gap-2">
           <button
@@ -166,6 +166,7 @@ function AppContent() {
           >
             监控看板
           </button>
+          
         </div>
 
         {/* 内容区域 */}

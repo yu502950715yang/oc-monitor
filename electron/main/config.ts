@@ -102,6 +102,52 @@ export const config = {
     /** 日志文件最大大小（字节） */
     maxSize: 10 * 1024 * 1024,  // 10MB
   },
+
+  // ====================
+  // MCP 配置
+  // ====================
+  mcp: {
+    /** 配置版本 */
+    version: '1.0',
+    
+    /** MCP 工具前缀列表 */
+    toolPrefixes: ['context7_', 'websearch_', 'grep_app_', 'playwright_'],
+    
+    /** MCP 工具中文名称映射 */
+    displayNames: {
+      context7_query_docs: 'Context7 文档查询',
+      context7_resolve_library_id: 'Context7 库解析',
+      websearch_web_search_exa: '网络搜索',
+      grep_app_searchgithub: 'GitHub 代码搜索',
+      playwright_: 'Playwright 浏览器自动化',
+    },
+    
+    /** MCP 工具颜色映射 */
+    colors: {
+      context7_query_docs: '#58a6ff',
+      context7_resolve_library_id: '#238636',
+      websearch_web_search_exa: '#f78166',
+      grep_app_searchgithub: '#a371f7',
+      playwright_: '#3fb950',
+    },
+    
+    /** 健康阈值（百分比） */
+    healthThreshold: 80,
+
+    /** 内置 MCP 服务列表 */
+    builtinMcpServices: [
+      { name: 'websearch', displayName: '网络搜索', type: 'remote' },
+      { name: 'context7', displayName: 'Context7 文档查询', type: 'remote' },
+      { name: 'grep_app', displayName: 'GitHub 代码搜索', type: 'remote' },
+    ],
+  },
 } as const;
+
+/** MCP 服务配置类型 */
+export type McpServiceConfig = {
+  name: string;
+  displayName: string;
+  type: 'remote' | 'local';
+};
 
 export type Config = typeof config;

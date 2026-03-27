@@ -13,6 +13,7 @@ import {
 } from "../services/storage/parser";
 import { formatCurrentAction } from "../logic/activityLogic";
 import log from "electron-log";
+import { config } from "../config";
 
 const MAX_SESSIONS_LIMIT = 20;
 const MAX_MESSAGES_LIMIT = 100;
@@ -331,10 +332,11 @@ export function registerSessionRoutes(app: Hono) {
       return state?.status === "error" || state?.error;
     }).length;
 
-    // 计算 MCP 工具数量：type === "tool" 且 tool 以前缀 "context7_" 或 "websearch_" 开头
+    // 计算 MCP 工具数量：type === "tool" 且 tool 以前缀匹配 config.mcp.toolPrefixes
+    const mcpPrefixes = config.mcp?.toolPrefixes || ["context7_", "websearch_"];
     const mcpCount = toolParts.filter(p => {
       const tool = p.tool || "";
-      return tool.startsWith("context7_") || tool.startsWith("websearch_");
+      return mcpPrefixes.some(prefix => tool.startsWith(prefix));
     }).length;
 
     // 计算 skill 工具数量：type === "tool" 且 tool === "skill"

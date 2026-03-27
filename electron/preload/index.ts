@@ -32,6 +32,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
       getSessionStats: (id: string) => ipcRenderer.invoke('api:fetch', `/api/sessions/${id}/stats`),
       getDashboard: (id: string) => ipcRenderer.invoke('api:fetch', `/api/sessions/${id}/dashboard`),
       getPlan: () => ipcRenderer.invoke('api:fetch', '/api/plan'),
+      getConfig: () => ipcRenderer.invoke('api:fetch', '/api/config'),
+      getMcpServices: () => ipcRenderer.invoke('api:fetch', '/api/mcp-services'),
+      saveMcpMappings: (mappings: any[]) => ipcRenderer.invoke('api:fetch', '/api/config/mcp-mapping', 'POST', JSON.stringify({ mappings })),
+      saveMcpService: (service: { name: string; displayName: string; type: string }) => 
+        ipcRenderer.invoke('api:fetch', '/api/mcp-services', 'POST', JSON.stringify(service)),
+      deleteMcpService: (name: string) => 
+        ipcRenderer.invoke('api:fetch', '/api/mcp-services?name=' + encodeURIComponent(name), 'DELETE'),
       health: () => ipcRenderer.invoke('api:fetch', '/api/health'),
     },
 })
@@ -54,6 +61,11 @@ declare global {
         getSessionStats: (id: string) => Promise<any>
         getDashboard: (id: string) => Promise<any>
         getPlan: () => Promise<any>
+        getConfig: () => Promise<any>
+        getMcpServices: () => Promise<any>
+        saveMcpMappings: (mappings: any[]) => Promise<any>
+        saveMcpService: (service: { name: string; displayName: string; type: string }) => Promise<any>
+        deleteMcpService: (name: string) => Promise<any>
         health: () => Promise<any>
       }
     }

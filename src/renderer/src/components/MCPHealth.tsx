@@ -1,6 +1,7 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { useApp } from '../context/AppContext'
 import { useDashboard } from '../hooks/useApi'
+import { useConfig } from '../hooks/useConfig'
 import { Network, Loader2 } from 'lucide-react'
 
 const MCP_COLORS = ['#ff7b72', '#ffa657', '#a371f7', '#79c0ff']
@@ -8,14 +9,18 @@ const MCP_COLORS = ['#ff7b72', '#ffa657', '#a371f7', '#79c0ff']
 export default function MCPHealth() {
   const { selectedSessionId } = useApp()
   const { data: dashboardData, loading } = useDashboard(selectedSessionId)
+  const { data: config } = useConfig()
 
   // 直接从 dashboardData 获取 mcpStats
   const mcpStats = dashboardData?.mcpStats ?? []
 
+  // 从配置获取健康阈值，默认 80
+  const healthThreshold = config?.mcp?.healthThreshold ?? 80
+
   const totalCalls = mcpStats.reduce((a, b) => a + b.total, 0)
   const totalErrors = mcpStats.reduce((a, b) => a + b.errors, 0)
   const successRate = totalCalls > 0 ? Math.round(((totalCalls - totalErrors) / totalCalls) * 100) : 0
-  const successColor = successRate >= 80 ? 'text-[var(--color-success)]' : 'text-[var(--color-error)]'
+  const successColor = successRate >= healthThreshold ? 'text-[var(--color-success)]' : 'text-[var(--color-error)]'
 
   return (
     <div className="bg-[var(--color-card)] rounded-xl border border-[var(--color-border)] p-6 shadow-lg">
@@ -87,7 +92,7 @@ export default function MCPHealth() {
                 <span className="text-[var(--color-text-primary)]">{mcp.tool}</span>
                 <div className="flex gap-3">
                   <span className="text-[var(--color-text-secondary)]">{mcp.total}次</span>
-                  <span className={mcp.successRate >= 80 ? "text-[var(--color-success)]" : "text-[var(--color-error)]"}>
+                  <span className={mcp.successRate >= healthThreshold ? "text-[var(--color-success)]" : "text-[var(--color-error)]"}>
                     {mcp.successRate}%
                   </span>
                 </div>

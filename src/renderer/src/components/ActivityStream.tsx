@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import { formatRelativeTime } from '@/utils/format'
 import { 
   Terminal, FileText, CheckSquare, ArrowRightCircle, 
   XCircle, Brain, ChevronDown, ChevronRight, Activity
 } from 'lucide-react'
+import { useConfig } from '@/hooks/useConfig'
 
 // Token信息接口
 export interface TokenInfo {
@@ -56,8 +57,8 @@ interface ActivityStreamProps {
   activities: Activity[]
 }
 
-// 工具类型对应的颜色 - 使用设计系统变量
-const toolTypeColors: Record<string, { label: string; color: string; bg: string; Icon: any }> = {
+// 默认工具颜色映射 - 硬编码备用值
+const defaultToolTypeColors: Record<string, { label: string; color: string; bg: string; Icon: any }> = {
   read: { label: '读取', color: 'text-[var(--color-info)]', bg: 'bg-[var(--color-info-bg)]', Icon: FileText },
   write: { label: '写入', color: 'text-[var(--color-success)]', bg: 'bg-[var(--color-success-bg)]', Icon: FileText },
   edit: { label: '编辑', color: 'text-[var(--color-warning)]', bg: 'bg-[var(--color-warning-bg)]', Icon: Terminal },
@@ -67,9 +68,14 @@ const toolTypeColors: Record<string, { label: string; color: string; bg: string;
   skill: { label: '技能', color: 'text-[#a855f7]', bg: 'bg-[#a855f7]/10', Icon: Brain },
   task: { label: '委托', color: 'text-[#d2a8ff]', bg: 'bg-[#d2a8ff]/10', Icon: ArrowRightCircle },
   webfetch: { label: '获取', color: 'text-[#ffa657]', bg: 'bg-[#ffa657]/10', Icon: Terminal },
-  'context7_query-docs': { label: 'MCP', color: 'text-[#ff7b72]', bg: 'bg-[#ff7b72]/10', Icon: Terminal },
-  'context7_resolve-library-id': { label: 'MCP', color: 'text-[#ff7b72]', bg: 'bg-[#ff7b72]/10', Icon: Terminal },
-  'websearch_web_search_exa': { label: 'MCP', color: 'text-[#ff7b72]', bg: 'bg-[#ff7b72]/10', Icon: Terminal },
+}
+
+// 默认 MCP 工具颜色（当配置不存在时使用）
+const defaultMcpColors: Record<string, string> = {
+  context7_query_docs: '#58a6ff',
+  context7_resolve_library_id: '#238636',
+  websearch_web_search_exa: '#f78166',
+  grep_app_searchgithub: '#a371f7',
 }
 
 const typeIconMap = {
@@ -83,6 +89,26 @@ const typeIconMap = {
 
 export default function ActivityStream({ activities }: ActivityStreamProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  const { data: config } = useConfig()
+
+  // 使用 useMemo 合并配置颜色与默认颜色
+  const toolTypeColors = useMemo(() => {
+    const merged = { ...defaultToolTypeColors }
+    const mcpColors = config?.mcp?.colors || defaultMcpColors
+    
+    // 根据配置添加 MCP 工具颜色映射
+    Object.entries(mcpColors).forEach(([key, color]) => {
+      const toolKey = key.replace(/_/g, '-') // context7_query_docs -> context7-query-docs
+      merged[toolKey] = { 
+        label: 'MCP', 
+        color: `text-[${color}]`, 
+        bg: `bg-[${color}]/10`, 
+        Icon: Terminal 
+      }
+    })
+    
+    return merged
+  }, [config])
 
   const toggleExpand = useCallback((id: string) => {
     setExpandedIds(prev => {
