@@ -20,6 +20,15 @@ export interface SessionStats {
   errorRate: number
   totalTokens: number
   topSkills: { name: string; count: number }[]
+  // Token 费用信息
+  tokens?: {
+    total: number
+    input?: number
+    output?: number
+    cache?: number
+    cost?: number
+    currency?: string
+  }
 }
 
 interface AppState {
@@ -77,10 +86,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { data: sessionTree, loading: sessionTreeLoading, refetch: refetchSessionTree } = useSessionTree(selectedSessionId)
   const { data: sessionStatsData, refetch: refetchSessionStats } = useSessionStats(selectedSessionId)
   
-  // 调试日志
-  console.log('[AppContext] selectedSessionId:', selectedSessionId)
-  console.log('[AppContext] sessionTree:', sessionTree)
-  console.log('[AppContext] sessionTreeLoading:', sessionTreeLoading)
   
   // 缓存 sessionTree，防止轮询时短暂为空导致节点消失
   useEffect(() => {
@@ -151,13 +156,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (apiActivity.parts) {
         apiActivity.parts.filter((p: any) => p.type === 'tool').slice(0, 3).forEach((p: any) => {
           // 调试工具类型
-          console.log('[AppContext] tool part:', { id: p.id, type: p.type, tool: p.tool, action: p.action, status: p.status })
         })
         
         apiActivity.parts.forEach((p: any) => {
           // 调试每个 part 的 type
           if (p.type === 'tool') {
-            console.log('[AppContext] 处理 tool part:', { id: p.id, type: p.type, tool: p.tool, action: p.action })
           }
           
           let content = p.action || p.tool || '工具调用'
@@ -168,7 +171,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
           
           // 调试
           if (p.type === 'tool') {
-            console.log('[AppContext] 生成的 activity:', { id: p.id, type: activityType, summary })
           }
           
           // 计算耗时
@@ -225,16 +227,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         })
       }
       
-      // 调试日志
-      const toolActivities = activities.filter((a: any) => a.type === 'tool').slice(0, 3)
-      console.log('[AppContext] 工具活动:', toolActivities.map(a => ({ 
-        id: a.id, 
-        type: a.type, 
-        content: a.content, 
-        summary: a.summary,
-        toolName: a.toolName
-      })))
-      
       // 按时间排序并限制数量（用于展示）
       const sorted = activities
         .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
@@ -273,6 +265,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         errorRate: sessionStatsData.tools.errorRate,
         totalTokens: sessionStatsData.tokens.total,
         topSkills: sessionStatsData.topSkills,
+        // 传递 tokens 信息（包含 cost 和 currency）
+        tokens: sessionStatsData.tokens,
       })
     }
   }, [sessionStatsData])

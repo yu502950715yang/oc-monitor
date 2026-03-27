@@ -121,16 +121,13 @@ async function initSqlite(): Promise<boolean> {
         db.run('PRAGMA journal_mode=WAL');
         db.run('PRAGMA busy_timeout=5000');
         db.run('PRAGMA synchronous=NORMAL');
-        log.info("[storage] WAL mode enabled");
       } catch (e) {
         log.warn("[storage] Failed to enable WAL mode:", e);
       }
       
       sqlJsInitialized = true;
-      log.info("[storage] SQLite database loaded successfully");
       return true;
     } else {
-      log.info("[storage] SQLite database not found at:", dbPath);
       sqlJsInitialized = true;
       return false;
     }
@@ -155,7 +152,6 @@ function querySessionsFromSqlite(): SessionMeta[] {
     `);
     
     if (result.length === 0 || result[0].values.length === 0) {
-      log.info("[storage] No sessions table found in SQLite");
       return [];
     }
     
@@ -185,7 +181,6 @@ function querySessionsFromSqlite(): SessionMeta[] {
             status: computeSessionStatus(updatedAt),
           });
         }
-        log.info(`[storage] Loaded ${sessions.length} sessions from SQLite`);
         return sessions;
       }
     } catch (e) {
@@ -215,7 +210,6 @@ function querySessionsFromSqlite(): SessionMeta[] {
             status: computeSessionStatus(updatedAt),
           });
         }
-        log.info(`[storage] Loaded ${sessions.length} projects from SQLite as sessions`);
         return sessions;
       }
     } catch (e) {
@@ -483,7 +477,6 @@ export async function reloadDbIfChanged(): Promise<boolean> {
     
     // 如果文件修改时间变了，重新加载数据库
     if (currentMtime !== lastDbFileMtime) {
-      log.info(`[storage] Database file changed, reloading...`);
       
       // 关闭旧连接
       if (db) {
@@ -507,7 +500,6 @@ export async function reloadDbIfChanged(): Promise<boolean> {
       
       lastDbFileMtime = currentMtime;
       
-      log.info(`[storage] Database reloaded successfully`);
       return true;
     }
     
@@ -542,7 +534,6 @@ export async function forceReloadDb(): Promise<boolean> {
   }
   
   try {
-    log.info(`[storage] Force reloading database...`);
     
     // 关闭旧连接
     if (db) {
@@ -555,7 +546,6 @@ export async function forceReloadDb(): Promise<boolean> {
     // 重新初始化
     await initSqlite();
     
-    log.info(`[storage] Database force reloaded successfully`);
     return true;
   } catch (error) {
     log.error(`[storage] Failed to force reload database:`, error);
@@ -766,7 +756,6 @@ export function closeDb(): void {
     db = null;
   }
   sqlJsInitialized = false;
-  log.info("[storage] Database closed");
 }
 
 // 获取存储路径信息（用于调试）

@@ -12,7 +12,7 @@ export interface ElectronAPI {
     getSession: (id: string) => Promise<any>
     getActivity: (id: string, limit?: number) => Promise<any>
     getSessionTree: (id: string) => Promise<any>
-    getSessionStats: (id: string) => Promise<any>
+    getSessionStats: (id: string, tokenPrices?: Record<string, { currency: string; cache: number; input: number; output: number }>) => Promise<any>
     getDashboard: (id: string) => Promise<any>
     getPlan: () => Promise<any>
 getConfig: () => Promise<any>

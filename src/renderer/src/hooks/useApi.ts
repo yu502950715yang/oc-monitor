@@ -296,6 +296,11 @@ export interface SessionStatsResponse {
   }
   tokens: {
     total: number
+    input?: number
+    output?: number
+    cache?: number
+    cost?: number
+    currency?: string
   }
   topSkills: { name: string; count: number }[]
 }
@@ -315,7 +320,25 @@ export function useSessionStats(id: string | null) {
     }
     setState(prev => ({ ...prev, loading: true, error: null }))
     try {
-      const result = await window.electronAPI.api.getSessionStats(id)
+      // 获取前端配置的价格
+      let tokenPrices: Record<string, { currency: string; cache: number; input: number; output: number }> = {}
+      try {
+        const stored = localStorage.getItem('tokenPriceConfigs')
+        if (stored) {
+          const configs = JSON.parse(stored)
+          configs.forEach((c: any) => {
+            tokenPrices[c.id] = {
+              currency: c.currency,
+              cache: c.cachePrice,
+              input: c.inputPrice,
+              output: c.outputPrice,
+            }
+          })
+        }
+      } catch (e) {
+      }
+      
+      const result = await window.electronAPI.api.getSessionStats(id, tokenPrices)
       setState({ data: result, loading: false, error: null })
     } catch (err) {
       setState({ data: null, loading: false, error: err as Error })

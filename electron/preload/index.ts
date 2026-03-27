@@ -29,7 +29,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
         return ipcRenderer.invoke('api:fetch', url)
       },
       getSessionTree: (id: string) => ipcRenderer.invoke('api:fetch', `/api/sessions/${id}/tree`),
-      getSessionStats: (id: string) => ipcRenderer.invoke('api:fetch', `/api/sessions/${id}/stats`),
+      getSessionStats: (id: string, tokenPrices?: Record<string, { currency: string; cache: number; input: number; output: number }>) => {
+        const url = tokenPrices 
+          ? `/api/sessions/${id}/stats?prices=${encodeURIComponent(JSON.stringify(tokenPrices))}`
+          : `/api/sessions/${id}/stats`
+        return ipcRenderer.invoke('api:fetch', url)
+      },
       getDashboard: (id: string) => ipcRenderer.invoke('api:fetch', `/api/sessions/${id}/dashboard`),
       getPlan: () => ipcRenderer.invoke('api:fetch', '/api/plan'),
       getConfig: () => ipcRenderer.invoke('api:fetch', '/api/config'),
@@ -58,7 +63,7 @@ declare global {
         getSession: (id: string) => Promise<any>
         getActivity: (id: string, limit?: number) => Promise<any>
         getSessionTree: (id: string) => Promise<any>
-        getSessionStats: (id: string) => Promise<any>
+        getSessionStats: (id: string, tokenPrices?: Record<string, { currency: string; cache: number; input: number; output: number }>) => Promise<any>
         getDashboard: (id: string) => Promise<any>
         getPlan: () => Promise<any>
         getConfig: () => Promise<any>

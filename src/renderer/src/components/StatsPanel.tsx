@@ -1,21 +1,29 @@
 import { useMemo } from 'react'
-import { Coins, Wrench, Network, Sparkles, AlertTriangle } from 'lucide-react'
+import { Coins, Wrench, Network, Sparkles, AlertTriangle, DollarSign } from 'lucide-react'
 import { useApp } from '../context/AppContext'
+import { useTokenPrices } from '@/hooks/useTokenPrices'
 
 export default function StatsPanel() {
   const { sessions, activities, sessionStats } = useApp()
+  const { findConfigByModelId } = useTokenPrices()
 
   const stats = useMemo(() => {
     const totalSessions = sessions.length
     
     // 优先使用后端统计
     if (sessionStats && sessionStats.totalTools > 0) {
+      // 直接使用后端返回的费用数据
+      const totalCost = (sessionStats.tokens as any)?.cost || 0
+      const costCurrency = (sessionStats.tokens as any)?.currency || '¥'
+      
       return {
         totalSessions,
         totalTools: sessionStats.totalTools,
         errorCount: sessionStats.errorCount,
         mcpCount: sessionStats.mcpCount,
         totalTokens: sessionStats.totalTokens,
+        totalCost,
+        costCurrency,
         errorRate: sessionStats.errorRate,
         skillCount: sessionStats.skillCount,
         topSkills: sessionStats.topSkills || [],
@@ -57,6 +65,26 @@ export default function StatsPanel() {
     const messageActivities = activities.filter(a => a.type === 'message' && a.tokens)
     const totalTokens = messageActivities.reduce((sum, m) => sum + (m.tokens?.total || 0), 0)
     
+    // 费用计算 - 从消息 activities 中提取 token 并匹配价格配置
+    let totalCost = 0
+    let costCurrency = '¥'
+    messageActivities.forEach(m => {
+      const modelId = m.modelID || 'minimax-m2.5'
+      const config = findConfigByModelId(modelId)
+      if (config) {
+        const tokens = (m.tokens as any) || {}
+        const inputTokens = tokens.input || tokens.prompt || 0
+        const outputTokens = tokens.output || tokens.completion || 0
+        const cacheTokens = tokens.cache || 0
+        // 费用 = 缓存token * 缓存单价 + 输入token * 输入单价 + 输出token * 输出单价
+        const cost = cacheTokens * config.cachePrice + 
+                     inputTokens * config.inputPrice + 
+                     outputTokens * config.outputPrice
+        totalCost += cost
+        costCurrency = config.currency
+      }
+    })
+    
     // 计算错误率
     const errorRate = totalTools > 0 ? Math.round((errorCount / totalTools) * 100) : 0
     
@@ -66,11 +94,25 @@ export default function StatsPanel() {
       errorCount,
       mcpCount,
       totalTokens,
+      totalCost,
+      costCurrency,
       errorRate,
       skillCount,
       topSkills,
     }
-  }, [sessions, activities, sessionStats])
+  }, [sessions, activities, sessionStats, findConfigByModelId])
+
+  // 格式化费用显示
+  const formatCost = (cost: number, currency: string) => {
+    if (cost <= 0) return '-'
+    if (cost < 0.01) {
+      return `${currency}${cost.toFixed(6)}`
+    } else if (cost < 1) {
+      return `${currency}${cost.toFixed(4)}`
+    } else {
+      return `${currency}${cost.toFixed(2)}`
+    }
+  }
 
   // 卡片颜色配置 - 使用设计系统变量，支持深色/浅色模式
   const cardColors: Record<string, { accentBg: string; text: string; accent: string }> = {
@@ -79,6 +121,7 @@ export default function StatsPanel() {
     'Skills调用': { accentBg: 'var(--color-accent-purple-bg)', text: 'var(--color-accent-purple)', accent: 'var(--color-accent-purple)' },
     'MCP调用': { accentBg: 'var(--color-accent-cyan-bg)', text: 'var(--color-accent-cyan)', accent: 'var(--color-accent-cyan)' },
     '错误': { accentBg: 'var(--color-error-bg)', text: 'var(--color-error)', accent: 'var(--color-error)' },
+    '费用': { accentBg: 'var(--color-accent-green-bg)', text: 'var(--color-accent-green)', accent: 'var(--color-accent-green)' },
   }
 
   const statCards = [
@@ -86,6 +129,11 @@ export default function StatsPanel() {
       label: '总Token',
       value: stats.totalTokens > 0 ? stats.totalTokens.toLocaleString() : '-',
       icon: <Coins className="w-5 h-5" />,
+    },
+    {
+      label: '费用',
+      value: formatCost(stats.totalCost, stats.costCurrency),
+      icon: <DollarSign className="w-5 h-5" />,
     },
     {
       label: '工具调用',

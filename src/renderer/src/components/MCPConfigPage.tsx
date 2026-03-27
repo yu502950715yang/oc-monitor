@@ -114,8 +114,6 @@ export default function MCPConfigPage() {
     setShowColorPicker(false)
     
     // TODO: 调用后端 API 保存配置
-    // 临时显示保存成功的提示
-    console.log('[MCPConfig] 保存映射配置:', { key: editingKey, ...editForm })
   }
 
   // 切换启用状态
@@ -127,7 +125,6 @@ export default function MCPConfigPage() {
     )
     
     // TODO: 调用后端 API 保存启用状态
-    console.log('[MCPConfig] 切换启用状态:', toolKey)
   }
 
   // 选择颜色
