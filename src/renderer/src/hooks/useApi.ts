@@ -100,8 +100,72 @@ export function useSession(id: string | null) {
 // 获取活动数据时的默认 limit（获取足够多的数据用于 StatsPanel 统计）
 const DEFAULT_ACTIVITY_LIMIT = 1000
 
+// Activity API 响应类型（与后端 sessions.ts /activity 端点匹配）
+export interface ActivityApiResponse {
+  // 旧格式兼容：某些客户端代码检查 activity.messages
+  activity?: {
+    messages?: Array<{
+      id: string
+      sessionID: string
+      role: string
+      agent?: string
+      content: string
+      tokens?: any
+      cost?: number
+      modelID?: string
+      providerID?: string
+      finish?: string
+      createdAt: string
+    }>
+  }
+  session: {
+    id: string
+    title: string
+    directory?: string
+    updatedAt?: string
+  }
+  messages: Array<{
+    id: string
+    sessionID: string
+    role: string
+    agent?: string
+    content: string
+    tokens?: any
+    cost?: number
+    modelID?: string
+    providerID?: string
+    finish?: string
+    createdAt: string
+  }>
+  parts: Array<{
+    id: string
+    messageID: string
+    sessionID: string
+    type: string
+    tool?: string
+    agent?: string
+    subagentType?: string
+    action?: string
+    status?: string
+    timeStart?: number
+    timeEnd?: number
+    error?: string
+    data?: any
+    input?: string
+    output?: string
+    createdAt: string
+  }>
+  all?: any[]
+  stats?: {
+    totalMessages: number
+    totalParts: number
+    toolCount: number
+    reasoningCount: number
+  }
+}
+
 export function useActivity(id: string | null) {
-  const [state, setState] = useState<ApiState<Activity[]>>({
+  const [state, setState] = useState<ApiState<ActivityApiResponse | null>>({
     data: null,
     loading: true,
     error: null,
