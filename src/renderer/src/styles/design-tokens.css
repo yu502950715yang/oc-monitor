@@ -69,6 +69,8 @@
   --color-accent-purple-bg: rgba(163, 113, 247, 0.15);
   --color-accent-cyan: #39d2c0;
   --color-accent-cyan-bg: rgba(57, 210, 192, 0.15);
+  --color-accent-green: #3fb950;
+  --color-accent-green-bg: rgba(63, 185, 80, 0.15);
 }
 
 /* ==================== 浅色主题 ==================== */
@@ -116,6 +118,8 @@
   --color-accent-purple-bg: rgba(130, 80, 223, 0.1);
   --color-accent-cyan: #0d7d6f;
   --color-accent-cyan-bg: rgba(13, 125, 111, 0.1);
+  --color-accent-green: #1a7f37;
+  --color-accent-green-bg: rgba(26, 127, 55, 0.1);
 }
 
 /* ==================== 过渡动画 ==================== */
