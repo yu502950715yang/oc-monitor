@@ -1,19 +1,19 @@
 import { useMemo } from 'react'
 import { XAxis, YAxis, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts'
-import { useDashboard } from '../hooks/useApi'
+import { useTokenHistory } from '../hooks/useApi'
 import { useApp } from '../context/AppContext'
 import { TrendingUp, BarChart3, Loader2 } from 'lucide-react'
 
 export default function TokenTrend() {
   const { selectedSessionId } = useApp()
-  const { data: dashboardData, loading } = useDashboard(selectedSessionId)
+  const { data, loading } = useTokenHistory(selectedSessionId)
 
+  // 后端已排序，直接使用 data.tokenHistory 数组
   const tokenData = useMemo(() => {
-    if (!dashboardData?.tokenData) return []
+    if (!data?.tokenHistory) return []
     
-    // 按时间排序并取最近20条
-    return dashboardData.tokenData
-      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+    // 取最近20条（后端已排序）
+    return data.tokenHistory
       .slice(-20)
       .map((t, index) => ({
         index,
@@ -22,23 +22,20 @@ export default function TokenTrend() {
         input: t.input,
         output: t.output,
         cache: t.cache,
-        cost: t.cost,
+        cost: 0, // 如需计算可添加
       }))
-  }, [dashboardData])
+  }, [data])
 
   // 使用完整数据计算各项统计
   const tokenStats = useMemo(() => {
-    if (!dashboardData?.tokenData) {
-      return { total: 0, input: 0, output: 0, cache: 0 }
-    }
-    const data = dashboardData.tokenData
+    const history = data?.tokenHistory || []
     return {
-      total: data.reduce((a, b) => a + b.total, 0),
-      input: data.reduce((a, b) => a + b.input, 0),
-      output: data.reduce((a, b) => a + b.output, 0),
-      cache: data.reduce((a, b) => a + b.cache, 0),
+      total: history.reduce((a, b) => a + b.total, 0),
+      input: history.reduce((a, b) => a + b.input, 0),
+      output: history.reduce((a, b) => a + b.output, 0),
+      cache: history.reduce((a, b) => a + b.cache, 0),
     }
-  }, [dashboardData])
+  }, [data])
 
   return (
     <div className="bg-[var(--color-card)] rounded-xl border border-[var(--color-border)] p-6 shadow-lg flex flex-col h-full">

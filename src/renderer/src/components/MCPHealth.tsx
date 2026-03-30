@@ -1,6 +1,6 @@
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
 import { useApp } from '../context/AppContext'
-import { useDashboard } from '../hooks/useApi'
+import { useMcpStats } from '../hooks/useApi'
 import { useConfig } from '../hooks/useConfig'
 import { Network, Loader2 } from 'lucide-react'
 
@@ -8,11 +8,11 @@ const MCP_COLORS = ['#ff7b72', '#ffa657', '#a371f7', '#79c0ff']
 
 export default function MCPHealth() {
   const { selectedSessionId } = useApp()
-  const { data: dashboardData, loading } = useDashboard(selectedSessionId)
+  const { data, loading } = useMcpStats(selectedSessionId)
   const { data: config } = useConfig()
 
-  // 直接从 dashboardData 获取 mcpStats
-  const mcpStats = dashboardData?.mcpStats ?? []
+  // 直接从 data 获取 mcpStats
+  const mcpStats = data?.mcpStats ?? []
 
   // 从配置获取健康阈值，默认 80
   const healthThreshold = config?.mcp?.healthThreshold ?? 80

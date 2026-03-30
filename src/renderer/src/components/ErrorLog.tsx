@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useApp } from '../context/AppContext'
-import { useDashboard } from '../hooks/useApi'
+import { useErrorLog } from '../hooks/useApi'
 import { XCircle } from 'lucide-react'
 
 function formatRelativeTime(isoString: string): string {
@@ -24,12 +24,12 @@ function formatRelativeTime(isoString: string): string {
 
 export default function ErrorLog() {
   const { selectedSessionId } = useApp()
-  const { data: dashboardData, loading } = useDashboard(selectedSessionId)
+  const { data, loading } = useErrorLog(selectedSessionId)
   const [filterTool, setFilterTool] = useState<string>('all')
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   // 从 dashboardData 获取错误列表（已按时间排序）
-  const errors = dashboardData?.errors || []
+  const errors = data?.errors || []
 
   const toolNames = useMemo(() => {
     const tools = new Set(errors.map(e => e.toolName).filter(Boolean))

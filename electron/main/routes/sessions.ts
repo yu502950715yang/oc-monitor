@@ -611,7 +611,139 @@ export function registerSessionRoutes(app: Hono) {
     });
   });
 
-  // Get child sessions for a parent session
+  // Get token history for a session
+  app.get("/api/sessions/:id/token-history", async (c) => {
+    const sessionID = c.req.param("id");
+
+    if (!checkStorageExists()) {
+      return c.json(
+        {
+          error: "SESSION_NOT_FOUND",
+          message: `Session '${sessionID}' not found`,
+        },
+        404
+      );
+    }
+
+    const session = await getSession(sessionID);
+    if (!session) {
+      return c.json(
+        {
+          error: "SESSION_NOT_FOUND",
+          message: `Session '${sessionID}' not found`,
+        },
+        404
+      );
+    }
+
+    const messages = await getMessagesForSession(sessionID);
+
+    // 提取每个消息的 token 数据
+    const tokenHistory = messages
+      .map((m) => {
+        const msgData = m.data as any;
+        const tokens = msgData?.tokens;
+        if (!tokens) return null;
+
+        let cacheTokens = 0;
+        const cache = tokens.cache;
+        if (typeof cache === 'number') {
+          cacheTokens = cache;
+        } else if (cache && typeof cache === 'object') {
+          cacheTokens = Number(cache.read || 0) + Number(cache.write || 0);
+        }
+
+        return {
+          timestamp: m.createdAt.toISOString(),
+          total: Number(tokens.total || 0) || 
+            (Number(tokens.input || tokens.prompt || 0) || 0) +
+            (Number(tokens.output || tokens.completion || 0) || 0) +
+            (Number(tokens.reasoning || 0) || 0) +
+            cacheTokens,
+          input: Number(tokens.input || tokens.prompt || 0) || 0,
+          output: Number(tokens.output || tokens.completion || 0) || 0,
+          reasoning: Number(tokens.reasoning || 0) || 0,
+          cache: cacheTokens,
+          modelID: tokens.modelID || msgData?.modelID || null,
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null)
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+    return c.json({ tokenHistory });
+  });
+
+  // Get MCP tool statistics for a session
+  app.get("/api/sessions/:id/mcp-stats", async (c) => {
+    const sessionID = c.req.param("id");
+
+    if (!checkStorageExists()) {
+      return c.json(
+        {
+          error: "SESSION_NOT_FOUND",
+          message: `Session '${sessionID}' not found`,
+        },
+        404
+      );
+    }
+
+    const session = await getSession(sessionID);
+    if (!session) {
+      return c.json(
+        {
+          error: "SESSION_NOT_FOUND",
+          message: `Session '${sessionID}' not found`,
+        },
+        404
+      );
+    }
+
+    const parts = await getPartsForSession(sessionID);
+    const toolParts = parts.filter(p => p.type === "tool");
+
+    // MCP 工具统计
+    const mcpPrefixes = config.mcp?.toolPrefixes || ["context7_", "websearch_"];
+    const mcpStatsMap: Record<string, { total: number; errors: number }> = {};
+
+    for (const p of toolParts) {
+      const tool = p.tool || "";
+      for (const prefix of mcpPrefixes) {
+        if (tool.startsWith(prefix)) {
+          if (!mcpStatsMap[prefix]) {
+            mcpStatsMap[prefix] = { total: 0, errors: 0 };
+          }
+          mcpStatsMap[prefix].total++;
+
+          const state = p.state as any;
+          if (state?.status === "error" || state?.error) {
+            mcpStatsMap[prefix].errors++;
+          }
+          break;
+        }
+      }
+    }
+
+    const mcpStats = Object.entries(mcpStatsMap).map(([tool, stats]) => ({
+      tool,
+      total: stats.total,
+      errors: stats.errors,
+      successRate: stats.total > 0 ? Math.round(((stats.total - stats.errors) / stats.total) * 100) : 0,
+    }));
+
+    return c.json({ mcpStats });
+  });  // Get error log for a session
+  app.get("/api/sessions/:id/error-log", async (c) => {
+    const sessionID = c.req.param("id");
+    if (!checkStorageExists()) return c.json({error:"STORAGE_NOT_FOUND"},404);
+    const session=await getSession(sessionID);
+    if(!session)return c.json({error:"SESSION_NOT_FOUND"},404);
+    const parts=await getPartsForSession(sessionID);
+    const toolParts=parts.filter(p=>p.type==="tool");
+    const errors=toolParts.filter(p=>{const s=p.state as any;return s?.status==="error"||s?.error}).map(p=>({id:p.id,toolName:p.tool,error:(p.state as any)?.error,timestamp:p.createdAt.toISOString()})).sort((a,b)=>new Date(b.timestamp).getTime()-new Date(a.timestamp).getTime());
+    return c.json({errors});
+  });
+
+
   app.get("/api/sessions/:id/children", async (c) => {
     const sessionID = c.req.param("id");
 
@@ -645,7 +777,7 @@ export function registerSessionRoutes(app: Hono) {
     if (!checkStorageExists()) {
       return c.json(
         {
-          error: "STORAGE_NOT_FOUND",
+          error: "SESSION_NOT_FOUND",
           message: "OpenCode storage directory does not exist.",
         },
         404

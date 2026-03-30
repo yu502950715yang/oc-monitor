@@ -389,6 +389,32 @@ export interface DashboardData {
   }[]
 }
 
+// Token history API response types
+export interface TokenHistoryItem {
+  timestamp: string
+  total: number
+  input: number
+  output: number
+  reasoning: number
+  cache: number
+  modelID: string | null
+}
+
+export interface ErrorLogItem {
+  id: string
+  toolName: string
+  error: string | null
+  timestamp: string
+}
+
+export interface ErrorLogResponse {
+  errors: ErrorLogItem[]
+}
+
+export interface TokenHistoryResponse {
+  tokenHistory: TokenHistoryItem[]
+}
+
 // Hook for fetching dashboard data
 export function useDashboard(id: string | null) {
   const [state, setState] = useState<ApiState<DashboardData | null>>({
@@ -416,4 +442,88 @@ export function useDashboard(id: string | null) {
   }, [fetchDashboard])
 
   return { ...state, refetch: fetchDashboard }
+}
+
+// Hook for fetching token history
+export function useErrorLog(id: string | null) {
+  const [state, setState] = useState<ApiState<ErrorLogResponse | null>>({data: null, loading: true, error: null});
+  const fetchErrorLog = useCallback(async () => {
+    if (!id) { setState({data: null, loading: false, error: null}); return; }
+    setState(p => ({...p, loading: true, error: null}));
+    try {
+      const result = await window.electronAPI.api.getErrorLog(id);
+      setState({data: result, loading: false, error: null});
+    } catch (err) { setState({data: null, loading: false, error: err as Error}); }
+  }, [id]);
+  useEffect(() => { fetchErrorLog(); }, [fetchErrorLog]);
+  return {...state, refetch: fetchErrorLog};
+}
+
+export function useTokenHistory(id: string | null) {
+  const [state, setState] = useState<ApiState<TokenHistoryResponse | null>>({
+    data: null,
+    loading: true,
+    error: null,
+  })
+
+  const fetchTokenHistory = useCallback(async () => {
+    if (!id) {
+      setState({ data: null, loading: false, error: null })
+      return
+    }
+    setState(prev => ({ ...prev, loading: true, error: null }))
+    try {
+      const result = await window.electronAPI.api.getTokenHistory(id)
+      setState({ data: result, loading: false, error: null })
+    } catch (err) {
+      setState({ data: null, loading: false, error: err as Error })
+    }
+  }, [id])
+
+  useEffect(() => {
+    fetchTokenHistory()
+  }, [fetchTokenHistory])
+
+  return { ...state, refetch: fetchTokenHistory }
+}
+
+// McpStats API response types
+export interface McpStatItem {
+  tool: string
+  total: number
+  errors: number
+  successRate: number
+}
+
+export interface McpStatsResponse {
+  mcpStats: McpStatItem[]
+}
+
+// Hook for fetching MCP stats
+export function useMcpStats(id: string | null) {
+  const [state, setState] = useState<ApiState<McpStatsResponse | null>>({
+    data: null,
+    loading: true,
+    error: null,
+  })
+
+  const fetchMcpStats = useCallback(async () => {
+    if (!id) {
+      setState({ data: null, loading: false, error: null })
+      return
+    }
+    setState(prev => ({ ...prev, loading: true, error: null }))
+    try {
+      const result = await window.electronAPI.api.getMcpStats(id)
+      setState({ data: result, loading: false, error: null })
+    } catch (err) {
+      setState({ data: null, loading: false, error: err as Error })
+    }
+  }, [id])
+
+  useEffect(() => {
+    fetchMcpStats()
+  }, [fetchMcpStats])
+
+  return { ...state, refetch: fetchMcpStats }
 }

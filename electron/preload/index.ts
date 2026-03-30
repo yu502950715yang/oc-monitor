@@ -36,6 +36,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
         return ipcRenderer.invoke('api:fetch', url)
       },
       getDashboard: (id: string) => ipcRenderer.invoke('api:fetch', `/api/sessions/${id}/dashboard`),
+getTokenHistory: (id: string) => ipcRenderer.invoke("api:fetch", "/api/sessions/"+id+"/token-history"),
+      getErrorLog: (id: string) => ipcRenderer.invoke("api:fetch", "/api/sessions/"+id+"/error-log"),
+      getMcpStats: (id: string) => ipcRenderer.invoke('api:fetch', `/api/sessions/${id}/mcp-stats`),
       getPlan: () => ipcRenderer.invoke('api:fetch', '/api/plan'),
       getConfig: () => ipcRenderer.invoke('api:fetch', '/api/config'),
       getMcpServices: () => ipcRenderer.invoke('api:fetch', '/api/mcp-services'),
@@ -65,6 +68,9 @@ declare global {
         getSessionTree: (id: string) => Promise<any>
         getSessionStats: (id: string, tokenPrices?: Record<string, { currency: string; cache: number; input: number; output: number }>) => Promise<any>
         getDashboard: (id: string) => Promise<any>
+        getTokenHistory: (id: string) => Promise<any>
+        getErrorLog: (id: string) => Promise<any>
+        getMcpStats: (id: string) => Promise<any>
         getPlan: () => Promise<any>
         getConfig: () => Promise<any>
         getMcpServices: () => Promise<any>
