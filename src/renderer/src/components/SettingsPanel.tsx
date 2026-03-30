@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState, memo } from 'react'
 import { useMcpServices } from '@/hooks/useMcpServices'
 import { useTokenPrices } from '@/hooks/useTokenPrices'
 import {
@@ -42,7 +42,7 @@ const menuItems = [
 ] as const
 type MenuId = typeof menuItems[number]['id']
 
-export default function SettingsPanel({ onClose }: SettingsPanelProps) {
+function SettingsPanelInner({ onClose }: SettingsPanelProps) {
   const { data: services, loading: _servicesLoading, error: _servicesError, refetch: refetchServices } = useMcpServices()
 
   // 当前选中的菜单
@@ -746,3 +746,8 @@ export default function SettingsPanel({ onClose }: SettingsPanelProps) {
     </div>
   )
 }
+function settingsPanelAreEqual(prevProps: SettingsPanelProps, nextProps: SettingsPanelProps) {
+  return prevProps.onClose === nextProps.onClose
+}
+
+export default memo(SettingsPanelInner, settingsPanelAreEqual)

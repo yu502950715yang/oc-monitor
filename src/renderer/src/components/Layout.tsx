@@ -1,4 +1,4 @@
-import { ReactNode, useState, useEffect } from 'react'
+import { ReactNode, useState, useEffect, useCallback } from 'react'
 import { Moon, Sun, Wifi, Settings } from 'lucide-react'
 import SettingsPanel from './SettingsPanel'
 
@@ -25,6 +25,7 @@ export default function Layout({ children }: LayoutProps) {
     localStorage.setItem('theme', theme)
   }, [theme])
 
+  const handleCloseSettings = useCallback(() => setShowSettings(false), []);
   const toggleTheme = () => {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark')
   }
@@ -81,7 +82,7 @@ export default function Layout({ children }: LayoutProps) {
       {showSettings && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setShowSettings(false)}>
           <div onClick={e => e.stopPropagation()}>
-            <SettingsPanel onClose={() => setShowSettings(false)} />
+            <SettingsPanel onClose={handleCloseSettings} />
           </div>
         </div>
       )}
