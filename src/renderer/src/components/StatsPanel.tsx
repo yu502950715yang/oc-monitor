@@ -126,7 +126,12 @@ export default function StatsPanel() {
     '费用': { accentBg: 'var(--color-accent-green-bg)', text: 'var(--color-accent-green)', accent: 'var(--color-accent-green)' },
   }
 
-  const statCards = [
+  const statCards: Array<{
+    label: string
+    value: string | number
+    icon: React.ReactNode
+    tip?: string
+  }> = [
     {
       label: '总Token',
       value: stats.totalTokens > 0 ? stats.totalTokens.toLocaleString() : '-',
@@ -136,6 +141,7 @@ export default function StatsPanel() {
       label: '费用',
       value: formatCost(stats.totalCost, stats.costCurrency),
       icon: <DollarSign className="w-5 h-5" />,
+      tip: '仅供参考，以实际账单为准',
     },
     {
       label: '工具调用',
@@ -190,6 +196,11 @@ export default function StatsPanel() {
                   >
                     {card.value}
                   </div>
+                  {card.tip && (
+                    <div className="text-[10px] text-[var(--color-warning)] mt-0.5 bg-[var(--color-warning)]/10 px-1.5 py-0.5 rounded">
+                      {card.tip}
+                    </div>
+                  )}
                 </div>
                 <div 
                   className="p-2 rounded-lg"
