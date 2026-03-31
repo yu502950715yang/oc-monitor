@@ -9,6 +9,7 @@ export interface Session {
   startTime: string
   progress?: number
   parentID?: string
+  directory?: string
 }
 
 interface SessionListProps {

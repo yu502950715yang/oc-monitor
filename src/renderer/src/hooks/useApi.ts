@@ -19,6 +19,12 @@ export interface Activity {
   sessionName?: string
 }
 
+export interface PlanItem {
+  content: string
+  completed: boolean
+  line: number
+}
+
 export interface Plan {
   id: string
   name: string
@@ -26,6 +32,7 @@ export interface Plan {
   totalTasks: number
   completedTasks: number
   sessions: number
+  items?: PlanItem[]
 }
 
 // API response wrapper
@@ -208,7 +215,7 @@ interface PlanApiResponse {
 }
 
 // Hook for fetching plan progress
-export function usePlan() {
+export function usePlan(projectPath?: string) {
   const [state, setState] = useState<ApiState<PlanProgress | null>>({
     data: null,
     loading: true,
@@ -216,14 +223,21 @@ export function usePlan() {
   })
 
   const fetchPlan = useCallback(async () => {
+    // 切换会话时需要设置 loading，让组件知道数据正在获取
     setState(prev => ({ ...prev, loading: true, error: null }))
     try {
-      const result = await window.electronAPI.api.getPlan() as PlanApiResponse
-      setState({ data: result.progress, loading: false, error: null })
+      const result = await window.electronAPI.api.getPlan(projectPath) as PlanApiResponse
+      // 只有当返回有效数据时才更新，否则保留旧数据避免闪烁
+      if (result.progress) {
+        setState({ data: result.progress, loading: false, error: null })
+      } else {
+        // 确实没有数据时清空
+        setState({ data: null, loading: false, error: null })
+      }
     } catch (err) {
       setState({ data: null, loading: false, error: err as Error })
     }
-  }, [])
+  }, [projectPath])
 
   useEffect(() => {
     fetchPlan()

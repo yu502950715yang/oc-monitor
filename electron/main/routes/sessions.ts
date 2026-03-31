@@ -51,6 +51,7 @@ export function registerSessionRoutes(app: Hono) {
     const sessionList = sessions.map((s) => ({
       id: s.id,
       projectID: s.projectID,
+      directory: s.directory,
       title: s.title,
       parentID: s.parentID,
       status: s.status,

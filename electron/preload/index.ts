@@ -39,7 +39,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 getTokenHistory: (id: string) => ipcRenderer.invoke("api:fetch", "/api/sessions/"+id+"/token-history"),
       getErrorLog: (id: string) => ipcRenderer.invoke("api:fetch", "/api/sessions/"+id+"/error-log"),
       getMcpStats: (id: string) => ipcRenderer.invoke('api:fetch', `/api/sessions/${id}/mcp-stats`),
-      getPlan: () => ipcRenderer.invoke('api:fetch', '/api/plan'),
+      getPlan: (projectPath?: string) => {
+        const url = projectPath ? `/api/plan?projectPath=${encodeURIComponent(projectPath)}` : '/api/plan'
+        return ipcRenderer.invoke('api:fetch', url)
+      },
       getConfig: () => ipcRenderer.invoke('api:fetch', '/api/config'),
       getMcpServices: () => ipcRenderer.invoke('api:fetch', '/api/mcp-services'),
       saveMcpMappings: (mappings: any[]) => ipcRenderer.invoke('api:fetch', '/api/config/mcp-mapping', 'POST', JSON.stringify({ mappings })),

@@ -676,39 +676,86 @@ export async function getPartsForSessions(sessionIDs: string[]): Promise<Map<str
 
 // Parse boulder.json for plan progress
 export function parseBoulder(projectPath: string): PlanProgress | null {
-  const boulderPath = join(projectPath, ".sisyphus", "boulder.json");
+  const sisyphusDir = join(projectPath, ".sisyphus");
+  const boulderPath = join(sisyphusDir, "boulder.json");
 
   if (!existsSync(boulderPath)) {
     return null;
   }
 
   try {
-    const content = readFileSync(boulderPath, "utf-8");
-    const boulder = JSON.parse(content);
+    const boulderContent = readFileSync(boulderPath, "utf-8");
+    const boulder = JSON.parse(boulderContent);
 
+    // 方法1: 优先从 active_plan 读取 .md 计划文件获取任务状态
+    const activePlan = boulder.active_plan;
+    if (activePlan && typeof activePlan === "string") {
+      // activePlan 可能是绝对路径或相对路径
+      let planFilePath = activePlan;
+      
+      // 如果是相对路径，尝试从 sisyphus 目录解析
+      if (!existsSync(planFilePath)) {
+        planFilePath = join(sisyphusDir, "plans", activePlan);
+      }
+      // 也可能是完整的文件名
+      if (!existsSync(planFilePath)) {
+        planFilePath = join(sisyphusDir, activePlan);
+      }
+      
+      if (existsSync(planFilePath)) {
+        const planContent = readFileSync(planFilePath, "utf-8");
+        const { total, completed, items } = parsePlanMarkdown(planContent);
+        
+        if (total > 0) {
+          return {
+            total,
+            completed,
+            percentage: Math.round((completed / total) * 100),
+            items,
+          };
+        }
+      }
+    }
+
+    // 方法2: 从 task_sessions 解析（但 task_sessions 没有 status 字段，所以这里主要获取任务名称）
+    const taskSessions = boulder.task_sessions || {};
     const items: PlanItem[] = [];
-    const lines = content.split("\n");
     let total = 0;
     let completed = 0;
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      // Match unchecked checkboxes: - [ ] or - [ ]
-      const uncheckedMatch = line.match(/^(\s*)-\s*\[\s*\]\s*(.+)$/);
-      // Match checked checkboxes: - [x] or - [X]
-      const checkedMatch = line.match(/^(\s*)-\s*\[\s*[xX]\s*\]\s*(.+)$/);
+    Object.entries(taskSessions).forEach(([key, value]: [string, unknown]) => {
+      total++;
+      const task = value as {
+        task_title?: string;
+        task_label?: string;
+        status?: string;
+        updated_at?: string;
+      };
+      
+      // task_sessions 没有 status 字段，无法准确判断完成状态
+      // 默认设为 false，或者可以根据 updated_at 时间推断（超过24小时视为可能已完成）
+      const isCompleted = task.status === 'completed' || task.status === 'done';
+      if (isCompleted) {
+        completed++;
+      }
+      
+      items.push({
+        content: task.task_title || task.task_label || key,
+        completed: isCompleted,
+        line: total,
+      });
+    });
 
-      if (uncheckedMatch || checkedMatch) {
-        total++;
-        const isCompleted = !!checkedMatch;
-        if (isCompleted) {
-          completed++;
-        }
-        items.push({
-          content: (checkedMatch || uncheckedMatch)![2].trim(),
-          completed: isCompleted,
-          line: i + 1,
-        });
+    // 方法3: 如果 task_sessions 为空，尝试直接解析 boulder.json 的 Markdown 内容
+    if (total === 0) {
+      const { total: mdTotal, completed: mdCompleted, items: mdItems } = parsePlanMarkdown(boulderContent);
+      if (mdTotal > 0) {
+        return {
+          total: mdTotal,
+          completed: mdCompleted,
+          percentage: Math.round((mdCompleted / mdTotal) * 100),
+          items: mdItems,
+        };
       }
     }
 
@@ -722,6 +769,37 @@ export function parseBoulder(projectPath: string): PlanProgress | null {
     log.warn("[storage] Failed to parse boulder.json", error);
     return null;
   }
+}
+
+// 解析 Markdown 计划文件，提取任务状态
+function parsePlanMarkdown(content: string): { total: number; completed: number; items: PlanItem[] } {
+  const items: PlanItem[] = [];
+  let total = 0;
+  let completed = 0;
+
+  const lines = content.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    // Match unchecked checkboxes: - [ ] or - [ ]
+    const uncheckedMatch = line.match(/^(\s*)-\s*\[\s*\]\s*(.+)$/);
+    // Match checked checkboxes: - [x] or - [X]
+    const checkedMatch = line.match(/^(\s*)-\s*\[\s*[xX]\s*\]\s*(.+)$/);
+
+    if (uncheckedMatch || checkedMatch) {
+      total++;
+      const isCompleted = !!checkedMatch;
+      if (isCompleted) {
+        completed++;
+      }
+      items.push({
+        content: (checkedMatch || uncheckedMatch)![2].trim(),
+        completed: isCompleted,
+        line: i + 1,
+      });
+    }
+  }
+
+  return { total, completed, items };
 }
 
 // Get root sessions (sessions without parent)

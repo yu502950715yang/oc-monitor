@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react'
 import type { Session } from '../components/SessionList'
 import type { Activity } from '../components/ActivityStream'
-import type { Plan } from '../components/PlanProgress'
+import type { Plan } from '../hooks/useApi'
 import type { SessionNode } from '../components/ActivityTree'
 import { useSessions, usePlan, useActivity, useSessionTree, useSessionStats, type SessionTreeNode } from '../hooks/useApi'
 import { usePolling } from '../hooks/usePolling'
@@ -81,7 +81,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [sessionStats, setSessionStats] = useState<SessionStats | null>(null)
 
   const { data: apiSessions, loading: sessionsLoading, error: sessionsError, refetch: refetchSessions } = useSessions(sessionLimit)
-  const { data: apiPlan, loading: planLoading, error: planError, refetch: refetchPlan } = usePlan()
+  // 获取当前会话的 directory 用于获取计划数据
+  const currentSession = apiSessions?.sessions?.find((s: any) => s.id === selectedSessionId)
+  const projectPath = currentSession?.directory
+  const { data: apiPlan, loading: planLoading, error: planError, refetch: refetchPlan } = usePlan(projectPath)
   const { data: apiActivity, loading: activityLoading, refetch: refetchActivity } = useActivity(selectedSessionId)
   const { data: sessionTree, loading: sessionTreeLoading, refetch: refetchSessionTree } = useSessionTree(selectedSessionId)
   const { data: sessionStatsData, refetch: refetchSessionStats } = useSessionStats(selectedSessionId)
@@ -105,6 +108,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
   }, [apiSessions])
+
+  // 将 apiPlan 转换为 plans 状态
+  useEffect(() => {
+    // 只有当返回有效数据时才更新，避免切换会话时列表闪烁
+    if (apiPlan) {
+      const planItem: Plan = {
+        id: projectPath || 'unknown',
+        name: projectPath ? projectPath.split(/[\\/]/).pop() || '计划' : '计划',
+        status: apiPlan.completed === apiPlan.total ? 'completed' : apiPlan.total > 0 ? 'active' : 'paused',
+        totalTasks: apiPlan.total,
+        completedTasks: apiPlan.completed,
+        sessions: 1,
+        items: apiPlan.items || [],
+      }
+      setPlans([planItem])
+    }
+    // 不再 else setPlans([])，保留旧数据避免切换时闪烁
+  }, [apiPlan, projectPath])
 
   // 加载更多会话
   const loadMoreSessions = useCallback(() => {
@@ -271,20 +292,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [sessionStatsData])
 
-  useEffect(() => {
-    if (apiPlan && apiPlan.total > 0) {
-      setPlans([{
-        id: 'current',
-        name: '当前计划',
-        status: apiPlan.completed === apiPlan.total ? 'completed' : 'active',
-        totalTasks: apiPlan.total,
-        completedTasks: apiPlan.completed,
-        sessions: 1,
-      }])
-    } else {
-      setPlans([])
-    }
-  }, [apiPlan])
+  // 注意：apiPlan -> plans 的转换在第 113-128 行的 useEffect 中处理
+  // 不再重复设置，避免 items 字段丢失
 
   const refresh = useCallback(() => {
     refetchSessions()

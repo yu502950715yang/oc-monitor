@@ -14,7 +14,7 @@ export interface ElectronAPI {
     getSessionTree: (id: string) => Promise<any>
     getSessionStats: (id: string, tokenPrices?: Record<string, { currency: string; cache: number; input: number; output: number }>) => Promise<any>
     getDashboard: (id: string) => Promise<any>
-    getPlan: () => Promise<any>
+    getPlan: (projectPath?: string) => Promise<any>
 getConfig: () => Promise<any>
         getMcpServices: () => Promise<any>
         saveMcpMappings: (mappings: any[]) => Promise<any>
