@@ -283,7 +283,7 @@ export function registerSessionRoutes(app: Hono) {
     const sessionID = c.req.param("id");
     
     // 解析前端传来的价格配置
-    let clientTokenPrices: Record<string, { currency: string; cache: number; input: number; output: number }> = {};
+    let clientTokenPrices: Record<string, { currency: string; cache: number; input: number; output: number; reasoning: number }> = {};
     const pricesParam = c.req.query("prices");
     if (pricesParam) {
       try {
@@ -332,25 +332,25 @@ export function registerSessionRoutes(app: Hono) {
     
     // Token 价格配置（单位：每 K tokens 的价格）
     // 优先使用前端配置，备用默认配置
-    const defaultPrices: Record<string, { currency: string; cache: number; input: number; output: number }> = {
+    const defaultPrices: Record<string, { currency: string; cache: number; input: number; output: number; reasoning: number }> = {
       // MiniMax 系列
-      'minimax-m2.5': { currency: '¥', cache: 0.00021, input: 0.00210, output: 0.00840 },
-      'minimax-m2.5-free': { currency: '¥', cache: 0.00021, input: 0.00210, output: 0.00840 },
-      'minimax': { currency: '¥', cache: 0.00021, input: 0.00210, output: 0.00840 },
+      'minimax-m2.5': { currency: '¥', cache: 0.00021, input: 0.00210, output: 0.00840, reasoning: 0.00840 },
+      'minimax-m2.5-free': { currency: '¥', cache: 0.00021, input: 0.00210, output: 0.00840, reasoning: 0.00840 },
+      'minimax': { currency: '¥', cache: 0.00021, input: 0.00210, output: 0.00840, reasoning: 0.00840 },
       // Moonshot (Kimi)
-      'kimi-k2.5': { currency: '¥', cache: 0.00000, input: 0.00100, output: 0.00400 },
-      'moonshotai': { currency: '¥', cache: 0.00000, input: 0.00100, output: 0.00400 },
+      'kimi-k2.5': { currency: '¥', cache: 0.00000, input: 0.00100, output: 0.00400, reasoning: 0.00400 },
+      'moonshotai': { currency: '¥', cache: 0.00000, input: 0.00100, output: 0.00400, reasoning: 0.00400 },
       // GLM (Zhipu)
-      'glm-5': { currency: '¥', cache: 0.00010, input: 0.00100, output: 0.00400 },
-      'glm': { currency: '¥', cache: 0.00010, input: 0.00100, output: 0.00400 },
-      'zai-org': { currency: '¥', cache: 0.00010, input: 0.00100, output: 0.00400 },
+      'glm-5': { currency: '¥', cache: 0.00010, input: 0.00100, output: 0.00400, reasoning: 0.00400 },
+      'glm': { currency: '¥', cache: 0.00010, input: 0.00100, output: 0.00400, reasoning: 0.00400 },
+      'zai-org': { currency: '¥', cache: 0.00010, input: 0.00100, output: 0.00400, reasoning: 0.00400 },
       // OpenAI
-      'gpt-5-nano': { currency: '$', cache: 0.00000, input: 0.00010, output: 0.00020 },
-      'gpt-4o': { currency: '$', cache: 0.00021, input: 0.00250, output: 0.01000 },
+      'gpt-5-nano': { currency: '$', cache: 0.00000, input: 0.00010, output: 0.00020, reasoning: 0.00020 },
+      'gpt-4o': { currency: '$', cache: 0.00021, input: 0.00250, output: 0.01000, reasoning: 0.01000 },
       // Anthropic
-      'claude-3.5-sonnet': { currency: '$', cache: 0.00015, input: 0.00300, output: 0.01500 },
+      'claude-3.5-sonnet': { currency: '$', cache: 0.00015, input: 0.00300, output: 0.01500, reasoning: 0.01500 },
       // Google
-      'gemini-1.5-pro': { currency: '$', cache: 0.00000, input: 0.00035, output: 0.00140 },
+      'gemini-1.5-pro': { currency: '$', cache: 0.00000, input: 0.00035, output: 0.00140, reasoning: 0.00140 },
     };
     
     // 合并前端配置和默认配置（前端配置优先）
@@ -387,13 +387,15 @@ export function registerSessionRoutes(app: Hono) {
       if (tokens) {
         const input = Number(tokens.input || tokens.prompt || 0) || 0;
         const output = Number(tokens.output || tokens.completion || 0) || 0;
+        const reasoning = Number(tokens.reasoning || 0) || 0;
         let cache = 0;
         if (typeof tokens.cache === 'number') {
           cache = tokens.cache;
         } else if (tokens.cache && typeof tokens.cache === 'object') {
           cache = Number(tokens.cache.read || 0) + Number(tokens.cache.write || 0);
         }
-        const total = Number(tokens.total) || 0;
+        // 直接使用分项累加计算 total（包含 reasoning）
+        const total = input + output + reasoning + cache;
         
         inputTokens += input;
         outputTokens += output;
@@ -406,7 +408,7 @@ export function registerSessionRoutes(app: Hono) {
         const price = tokenPrices[modelKey];
         
         if (price) {
-          const cost = (cache * price.cache + input * price.input + output * price.output) / 1000;
+          const cost = (cache * price.cache + input * price.input + output * price.output + reasoning * (price.reasoning || price.output)) / 1000;
           totalCost += cost;
           costCurrency = price.currency;
         } else {
@@ -524,19 +526,26 @@ export function registerSessionRoutes(app: Hono) {
       const msgData = m.data as any;
       const tokens = msgData?.tokens;
       if (tokens) {
-        inputTokens += Number(tokens.input || tokens.prompt || 0) || 0;
-        outputTokens += Number(tokens.output || tokens.completion || 0) || 0;
-        reasoningTokens += Number(tokens.reasoning || 0) || 0;
+        const input = Number(tokens.input || tokens.prompt || 0) || 0;
+        const output = Number(tokens.output || tokens.completion || 0) || 0;
+        const reasoning = Number(tokens.reasoning || 0) || 0;
         
         // 处理 cache 字段
-        const cache = tokens.cache;
-        if (typeof cache === 'number') {
-          cacheTokens += cache;
-        } else if (cache && typeof cache === 'object') {
-          cacheTokens += Number(cache.read || 0) + Number(cache.write || 0);
+        let cache = 0;
+        if (typeof tokens.cache === 'number') {
+          cache = tokens.cache;
+        } else if (tokens.cache && typeof tokens.cache === 'object') {
+          cache = Number(tokens.cache.read || 0) + Number(tokens.cache.write || 0);
         }
         
-        totalTokens += Number(tokens.total || 0) || (inputTokens + outputTokens + reasoningTokens + cacheTokens);
+        // 累加各类 token
+        inputTokens += input;
+        outputTokens += output;
+        reasoningTokens += reasoning;
+        cacheTokens += cache;
+        
+        // 直接使用分项累加计算 total（包含 reasoning）
+        totalTokens += input + output + reasoning + cache;
       }
     }
 

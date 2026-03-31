@@ -9,16 +9,17 @@ export interface ModelPriceConfig {
   cachePrice: number
   inputPrice: number
   outputPrice: number
+  reasoningPrice: number
   isPreset: boolean
 }
 
 const STORAGE_KEY = 'tokenPriceConfigs'
 
 const PRESET_CONFIGS: ModelPriceConfig[] = [
-  { id: 'minimax-m2.5', name: 'MiniMax M2.5', currency: '¥', cachePrice: 0.00021, inputPrice: 0.00210, outputPrice: 0.00840, isPreset: true },
-  { id: 'gpt-4o', name: 'GPT-4o', currency: '$', cachePrice: 0.00021, inputPrice: 0.00250, outputPrice: 0.01000, isPreset: true },
-  { id: 'claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', currency: '$', cachePrice: 0.00015, inputPrice: 0.00300, outputPrice: 0.01500, isPreset: true },
-  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', currency: '$', cachePrice: 0.00000, inputPrice: 0.00035, outputPrice: 0.00140, isPreset: true },
+  { id: 'minimax-m2.5', name: 'MiniMax M2.5', currency: '¥', cachePrice: 0.00021, inputPrice: 0.00210, outputPrice: 0.00840, reasoningPrice: 0.00840, isPreset: true },
+  { id: 'gpt-4o', name: 'GPT-4o', currency: '$', cachePrice: 0.00021, inputPrice: 0.00250, outputPrice: 0.01000, reasoningPrice: 0.01000, isPreset: true },
+  { id: 'claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', currency: '$', cachePrice: 0.00015, inputPrice: 0.00300, outputPrice: 0.01500, reasoningPrice: 0.01500, isPreset: true },
+  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', currency: '$', cachePrice: 0.00000, inputPrice: 0.00035, outputPrice: 0.00140, reasoningPrice: 0.00140, isPreset: true },
 ]
 
 export function useTokenPrices() {

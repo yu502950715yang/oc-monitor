@@ -75,6 +75,7 @@ function SettingsPanelInner({ onClose }: SettingsPanelProps) {
     cachePrice: string
     inputPrice: string
     outputPrice: string
+    reasoningPrice: string
   } | null>(null)
   const [showAddPriceModal, setShowAddPriceModal] = useState(false)
   const [addPriceForm, setAddPriceForm] = useState({
@@ -84,6 +85,7 @@ function SettingsPanelInner({ onClose }: SettingsPanelProps) {
     cachePrice: '',
     inputPrice: '',
     outputPrice: '',
+    reasoningPrice: '',
   })
 
   // 开始编辑模型价格
@@ -92,9 +94,10 @@ function SettingsPanelInner({ onClose }: SettingsPanelProps) {
     setEditForm({
       name: config.name,
       currency: config.currency,
-      cachePrice: config.cachePrice.toString(),
-      inputPrice: config.inputPrice.toString(),
-      outputPrice: config.outputPrice.toString(),
+      cachePrice: config.cachePrice?.toString() ?? '0',
+      inputPrice: config.inputPrice?.toString() ?? '0',
+      outputPrice: config.outputPrice?.toString() ?? '0',
+      reasoningPrice: config.reasoningPrice?.toString() ?? config.outputPrice?.toString() ?? '0',
     })
   }
 
@@ -104,15 +107,16 @@ function SettingsPanelInner({ onClose }: SettingsPanelProps) {
     setEditForm(null)
   }
 
-  // 保存编辑
-  const handleSaveEdit = (id: string) => {
-    if (!editForm) return
-    updatePrice(id, {
+// 保存编辑
+  const handleSaveEdit = () => {
+    if (!editForm || !editingId) return
+    updatePrice(editingId, {
       name: editForm.name,
       currency: editForm.currency,
       cachePrice: parseFloat(editForm.cachePrice) || 0,
       inputPrice: parseFloat(editForm.inputPrice) || 0,
       outputPrice: parseFloat(editForm.outputPrice) || 0,
+      reasoningPrice: parseFloat(editForm.reasoningPrice) || parseFloat(editForm.outputPrice) || 0,
     })
     setEditingId(null)
     setEditForm(null)
@@ -127,6 +131,7 @@ function SettingsPanelInner({ onClose }: SettingsPanelProps) {
       cachePrice: '',
       inputPrice: '',
       outputPrice: '',
+      reasoningPrice: '',
     })
     setShowAddPriceModal(true)
   }
@@ -141,6 +146,7 @@ function SettingsPanelInner({ onClose }: SettingsPanelProps) {
       cachePrice: parseFloat(addPriceForm.cachePrice) || 0,
       inputPrice: parseFloat(addPriceForm.inputPrice) || 0,
       outputPrice: parseFloat(addPriceForm.outputPrice) || 0,
+      reasoningPrice: parseFloat(addPriceForm.reasoningPrice) || parseFloat(addPriceForm.outputPrice) || 0,
     })
     setShowAddPriceModal(false)
   }
@@ -268,7 +274,7 @@ function SettingsPanelInner({ onClose }: SettingsPanelProps) {
                         <option value="$">$</option>
                       </select>
                     </div>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-4 gap-2">
                       <div>
                         <label className="text-[10px] text-[var(--color-text-secondary)]">缓存</label>
                         <input
@@ -299,6 +305,16 @@ function SettingsPanelInner({ onClose }: SettingsPanelProps) {
                           className="w-full px-2 py-1 text-xs bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)]"
                         />
                       </div>
+                      <div>
+                        <label className="text-[10px] text-[var(--color-text-secondary)]">推理</label>
+                        <input
+                          type="number"
+                          step="0.00001"
+                          value={editForm.reasoningPrice}
+                          onChange={(e) => setEditForm({ ...editForm, reasoningPrice: e.target.value })}
+                          className="w-full px-2 py-1 text-xs bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)]"
+                        />
+                      </div>
                     </div>
                     <div className="flex items-center justify-end gap-2">
                       <button
@@ -310,7 +326,7 @@ function SettingsPanelInner({ onClose }: SettingsPanelProps) {
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleSaveEdit(config.id)}
+                        onClick={handleSaveEdit}
                         className="flex items-center gap-1 px-2 py-1 text-xs bg-[var(--color-success)] text-white rounded hover:opacity-90"
                       >
                         <Save className="w-3 h-3" />
@@ -343,6 +359,10 @@ function SettingsPanelInner({ onClose }: SettingsPanelProps) {
                         <span className="flex items-center gap-1">
                           <Cpu className="w-3 h-3" />
                           输出: {config.outputPrice}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Cpu className="w-3 h-3" />
+                          推理: {config.reasoningPrice ?? config.outputPrice}
                         </span>
                       </div>
                     </div>
@@ -687,7 +707,7 @@ function SettingsPanelInner({ onClose }: SettingsPanelProps) {
                 </select>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-4 gap-2">
                 <div>
                   <label className="block text-xs text-[var(--color-text-secondary)] mb-1">缓存价格</label>
                   <input
@@ -717,6 +737,17 @@ function SettingsPanelInner({ onClose }: SettingsPanelProps) {
                     step="0.00001"
                     value={addPriceForm.outputPrice}
                     onChange={(e) => setAddPriceForm({ ...addPriceForm, outputPrice: e.target.value })}
+                    className="w-full px-2 py-1.5 text-sm bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-primary)]"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-[var(--color-text-secondary)] mb-1">推理价格</label>
+                  <input
+                    type="number"
+                    step="0.00001"
+                    value={addPriceForm.reasoningPrice}
+                    onChange={(e) => setAddPriceForm({ ...addPriceForm, reasoningPrice: e.target.value })}
                     className="w-full px-2 py-1.5 text-sm bg-[var(--color-bg-tertiary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)] focus:outline-none focus:border-[var(--color-primary)]"
                     placeholder="0.00"
                   />

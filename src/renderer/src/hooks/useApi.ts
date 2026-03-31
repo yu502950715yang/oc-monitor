@@ -321,7 +321,7 @@ export function useSessionStats(id: string | null) {
     setState(prev => ({ ...prev, loading: true, error: null }))
     try {
       // 获取前端配置的价格
-      let tokenPrices: Record<string, { currency: string; cache: number; input: number; output: number }> = {}
+      let tokenPrices: Record<string, { currency: string; cache: number; input: number; output: number; reasoning: number }> = {}
       try {
         const stored = localStorage.getItem('tokenPriceConfigs')
         if (stored) {
@@ -332,6 +332,7 @@ export function useSessionStats(id: string | null) {
               cache: c.cachePrice,
               input: c.inputPrice,
               output: c.outputPrice,
+              reasoning: c.reasoningPrice || c.outputPrice,
             }
           })
         }

@@ -76,10 +76,12 @@ export default function StatsPanel() {
         const inputTokens = tokens.input || tokens.prompt || 0
         const outputTokens = tokens.output || tokens.completion || 0
         const cacheTokens = tokens.cache || 0
-        // 费用 = 缓存token * 缓存单价 + 输入token * 输入单价 + 输出token * 输出单价
+        const reasoningTokens = tokens.reasoning || 0
+        // 费用 = 缓存token * 缓存单价 + 输入token * 输入单价 + 输出token * 输出单价 + 推理token * 推理单价
         const cost = cacheTokens * config.cachePrice + 
                      inputTokens * config.inputPrice + 
-                     outputTokens * config.outputPrice
+                     outputTokens * config.outputPrice +
+                     reasoningTokens * (config.reasoningPrice || config.outputPrice)
         totalCost += cost
         costCurrency = config.currency
       }
