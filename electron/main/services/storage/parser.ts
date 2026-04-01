@@ -227,35 +227,39 @@ function queryMessagesFromSqlite(sessionID: string): MessageMeta[] {
   if (!db) return [];
   
   try {
-    const result = db.exec(`
+    const stmt = db.prepare(`
       SELECT id, session_id, time_created, time_updated, data
       FROM message 
-      WHERE session_id = '${sessionID.replace(/'/g, "''")}'
+      WHERE session_id = ?
       ORDER BY time_created ASC
     `);
+    stmt.bind([sessionID]);
     
-    if (result.length > 0 && result[0].values.length > 0) {
-      return result[0].values.map((row: any[]) => {
-        let parsedData: any = null;
-        try { 
-          parsedData = row[4] ? JSON.parse(String(row[4])) : null; 
-        } catch {}
-        
-        // 从 data JSON 中提取 role 和 agent
-        const role = parsedData?.role ? String(parsedData.role) : 'user';
-        const agent = parsedData?.agent ? String(parsedData.agent) : undefined;
-        
-        return {
-          id: String(row[0] || ''),
-          sessionID: String(row[1] || ''),
-          role,
-          agent,
-          createdAt: row[2] ? new Date(Number(row[2])) : new Date(),
-          data: parsedData,
-        };
+    const messages: MessageMeta[] = [];
+    while (stmt.step()) {
+      const row = stmt.get();
+      let parsedData: any = null;
+      try { 
+        parsedData = row[4] ? JSON.parse(String(row[4])) : null; 
+      } catch (e) {
+        log.debug("[storage] Error parsing message data JSON:", e);
+      }
+      
+      // 从 data JSON 中提取 role 和 agent
+      const role = parsedData?.role ? String(parsedData.role) : 'user';
+      const agent = parsedData?.agent ? String(parsedData.agent) : undefined;
+      
+      messages.push({
+        id: String(row[0] || ''),
+        sessionID: String(row[1] || ''),
+        role,
+        agent,
+        createdAt: row[2] ? new Date(Number(row[2])) : new Date(),
+        data: parsedData,
       });
     }
-    return [];
+    stmt.free();
+    return messages;
   } catch (error) {
     log.debug("[storage] Error querying messages from SQLite:", error);
     return [];
@@ -268,44 +272,48 @@ function queryPartsFromSqlite(sessionID: string): PartMeta[] {
   try {
     // part 表只有: id, message_id, session_id, time_created, time_updated, data
     // data 字段是 JSON，包含 type, tool, state 等
-    let result;
+    let stmt;
     try {
-      result = db.exec(`
+      stmt = db.prepare(`
         SELECT id, message_id, session_id, time_created, data
         FROM part 
-        WHERE session_id = '${sessionID.replace(/'/g, "''")}'
+        WHERE session_id = ?
         ORDER BY time_created ASC
       `);
+      stmt.bind([sessionID]);
     } catch {
       // parts 表不存在
       return [];
     }
     
-    if (result.length > 0 && result[0].values.length > 0) {
-      return result[0].values.map((row: any[]) => {
-        let parsedData: any = null;
-        try { 
-          parsedData = row[4] ? JSON.parse(String(row[4])) : null; 
-        } catch {}
-        
-        // 从 data JSON 中提取 type, tool, state
-        const type = parsedData?.type ? String(parsedData.type) : undefined;
-        const tool = parsedData?.tool ? String(parsedData.tool) : undefined;
-        const state = parsedData?.state ? parsedData.state : undefined;
-        
-        return {
-          id: String(row[0] || ''),
-          messageID: String(row[1] || ''),
-          sessionID: String(row[2] || ''),
-          type,
-          tool,
-          state,
-          createdAt: row[3] ? new Date(Number(row[3])) : new Date(),
-          data: parsedData,
-        };
+    const parts: PartMeta[] = [];
+    while (stmt.step()) {
+      const row: any[] = stmt.get();
+      let parsedData: any = null;
+      try { 
+        parsedData = row[4] ? JSON.parse(String(row[4])) : null; 
+      } catch (e) {
+        log.debug("[storage] Error parsing part data JSON:", e);
+      }
+      
+      // 从 data JSON 中提取 type, tool, state
+      const type = parsedData?.type ? String(parsedData.type) : undefined;
+      const tool = parsedData?.tool ? String(parsedData.tool) : undefined;
+      const state = parsedData?.state ? parsedData.state : undefined;
+      
+      parts.push({
+        id: String(row[0] || ''),
+        messageID: String(row[1] || ''),
+        sessionID: String(row[2] || ''),
+        type,
+        tool,
+        state,
+        createdAt: row[3] ? new Date(Number(row[3])) : new Date(),
+        data: parsedData,
       });
     }
-    return [];
+    stmt.free();
+    return parts;
   } catch (error) {
     log.debug("[storage] Error querying parts from SQLite:", error);
     return [];

@@ -1,4 +1,5 @@
 import type { PartMeta } from "../services/storage/parser";
+import type { PartData, PartStateData, ToolInput } from "../types/part";
 import { config } from "../config";
 
 const MAX_PATH_LENGTH = 40;
@@ -50,35 +51,44 @@ export function formatCurrentAction(part: PartMeta): string | null {
   }
 
   const toolName = getToolDisplayName(part.tool);
-  const data = part.data as any;
-  const state = part.state as any;
+  const data = part.data as unknown as PartData;
+  const state = part.state as unknown as PartStateData;
   // input 可能在 data.input 或 state.input 中，需要先解析
-  let input = data?.input ?? state?.input;
+  // data.input 可能是字符串形式的 JSON，state.input 是字符串
+  const rawInput = (data?.input as string | undefined) ?? state?.input;
+  let input: ToolInput | string | undefined = rawInput;
   if (typeof input === 'string') {
     try {
-      input = JSON.parse(input);
+      input = JSON.parse(input) as ToolInput;
     } catch (e) {
       // 解析失败，使用原始字符串
     }
   }
 
+  // 判断 input 是否为对象类型 (非 string)
+  const isInputObject = input !== undefined && typeof input !== 'string';
+
   // 任务委托 (task, subtask, agent)
   if (part.tool === "task" || part.tool === "delegate_task") {
-    const desc = input?.description;
-    const agentType = input?.subagent_type;
-    if (desc && agentType) return `${desc} (${agentType})`;
-    if (desc) return desc;
-    if (agentType) return `委托 ${agentType}`;
+    if (isInputObject) {
+      const desc = (input as ToolInput).description;
+      const agentType = (input as ToolInput).subagent_type;
+      if (desc && agentType) return `${desc} (${agentType})`;
+      if (desc) return desc;
+      if (agentType) return `委托 ${agentType}`;
+    }
     return "委托任务";
   }
 
   if (part.tool === "agent" || part.tool === "subtask") {
-    const desc = input?.description;
-    const name = input?.name;
-    const agentType = input?.subagent_type;
-    if (desc) return desc;
-    if (name) return `${toolName}: ${name}`;
-    if (agentType) return `${toolName} (${agentType})`;
+    if (isInputObject) {
+      const desc = (input as ToolInput).description;
+      const name = (input as ToolInput).name;
+      const agentType = (input as ToolInput).subagent_type;
+      if (desc) return desc;
+      if (name) return `${toolName}: ${name}`;
+      if (agentType) return `${toolName} (${agentType})`;
+    }
     return toolName;
   }
 
@@ -89,14 +99,17 @@ export function formatCurrentAction(part: PartMeta): string | null {
 
   // TODO 任务
   if (part.tool === "todowrite") {
-    const todos = input?.todos;
-    if (!todos || todos.length === 0) return "清除任务";
-    const preview = todos
-      .slice(0, 2)
-      .map((t: any) => (t.content || "").slice(0, 30))
-      .filter(Boolean)
-      .join(", ");
-    return `更新 ${todos.length} 个任务: ${preview}${todos.length > 2 ? "..." : ""}`;
+    if (isInputObject) {
+      const todos = (input as ToolInput).todos;
+      if (!todos || todos.length === 0) return "清除任务";
+      const preview = todos
+        .slice(0, 2)
+        .map((t: any) => (t.content || "").slice(0, 30))
+        .filter(Boolean)
+        .join(", ");
+      return `更新 ${todos.length} 个任务: ${preview}${todos.length > 2 ? "..." : ""}`;
+    }
+    return "更新任务";
   }
 
   if (part.tool === "todoread") {
@@ -104,35 +117,37 @@ export function formatCurrentAction(part: PartMeta): string | null {
   }
 
   // 根据输入参数格式化
-  if (input) {
+  if (isInputObject) {
+    const toolInput = input as ToolInput;
     // 文件操作
-    if (input.filePath) {
-      return `${toolName} ${truncatePath(input.filePath)}`;
+    if (toolInput.filePath) {
+      return `${toolName} ${truncatePath(toolInput.filePath)}`;
     }
     // 命令执行
-    if (input.command) {
-      const cmd = input.command.length > 30
-        ? input.command.slice(0, 27) + "..."
-        : input.command;
+    if (toolInput.command) {
+      const cmd = toolInput.command.length > 30
+        ? toolInput.command.slice(0, 27) + "..."
+        : toolInput.command;
       return `${toolName} ${cmd}`;
     }
     // 搜索
-    if (input.pattern) {
-      return `${toolName} "${input.pattern}"`;
+    if (toolInput.pattern) {
+      return `${toolName} "${toolInput.pattern}"`;
     }
     // 网页获取
-    if (input.url) {
-      return `${toolName} ${truncatePath(input.url)}`;
+    if (toolInput.url) {
+      return `${toolName} ${truncatePath(toolInput.url)}`;
     }
     // 网络搜索
-    if (input.query) {
-      return `${toolName} "${input.query}"`;
+    if (toolInput.query) {
+      return `${toolName} "${toolInput.query}"`;
     }
   }
 
   // 使用标题或默认工具名
-  if (data?.title) {
-    return data.title;
+  const title = data?.title;
+  if (title) {
+    return title;
   }
 
   return toolName;
@@ -148,7 +163,7 @@ export function isPendingToolCall(part: PartMeta): boolean {
     return false;
   }
 
-  const state = part.state as any;
+  const state = part.state as unknown as PartStateData;
   if (!state || !state.status) {
     return false;
   }
@@ -186,7 +201,7 @@ export function getSessionActivityState(parts: PartMeta[]): SessionActivityState
   });
 
   for (const part of sortedParts) {
-    const state = part.state as any;
+    const state = part.state as unknown as PartStateData;
     
     if (part.type === "tool" && part.tool) {
       if (isPendingToolCall(part)) {
@@ -201,7 +216,7 @@ export function getSessionActivityState(parts: PartMeta[]): SessionActivityState
     }
 
     if (part.type === "reasoning") {
-      const data = part.data as any;
+      const data = part.data as unknown as PartData;
       if (data?.text && !isReasoning) {
         isReasoning = true;
         const text = data.text.trim();
@@ -210,14 +225,14 @@ export function getSessionActivityState(parts: PartMeta[]): SessionActivityState
     }
 
     if (part.type === "patch") {
-      const data = part.data as any;
+      const data = part.data as unknown as PartData;
       if (data?.patchFiles && !state?.completed) {
         patchFilesCount += data.patchFiles.length;
       }
     }
 
     if (part.type === "step-finish") {
-      const data = part.data as any;
+      const data = part.data as unknown as PartData;
       if (data?.stepFinishReason && !stepFinishReason) {
         stepFinishReason = data.stepFinishReason;
       }

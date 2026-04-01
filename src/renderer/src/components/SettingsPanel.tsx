@@ -1,6 +1,6 @@
-﻿import { useState, memo } from 'react'
+import { useState, memo, useMemo, useCallback } from 'react'
 import { useMcpServices } from '@/hooks/useMcpServices'
-import { useTokenPrices } from '@/hooks/useTokenPrices'
+import { useTokenPrices, ModelPriceConfig } from '@/hooks/useTokenPrices'
 import {
   Server,
   Plug,
@@ -42,6 +42,210 @@ const menuItems = [
 ] as const
 type MenuId = typeof menuItems[number]['id']
 
+// Token 价格配置组件的 Props 接口 - 完全独立的组件
+interface EditFormData {
+  name: string
+  currency: '¥' | '$'
+  cachePrice: string
+  inputPrice: string
+  outputPrice: string
+  reasoningPrice: string
+}
+
+interface TokenPriceConfigViewProps {
+  configs: ModelPriceConfig[]
+  loading: boolean
+  editingId: string | null
+  editForm: EditFormData | null
+  onStartEdit: (config: ModelPriceConfig) => void
+  onCancelEdit: () => void
+  onSaveEdit: () => void
+  onDeleteModel: (id: string) => void
+  onOpenAddModal: () => void
+  onEditFormChange: (updates: Partial<EditFormData>) => void
+}
+
+// 独立的 Token 价格配置组件 - 在 parent 外部定义
+const TokenPriceConfigView = memo(function TokenPriceConfigView({
+  configs,
+  loading,
+  editingId,
+  editForm,
+  onStartEdit,
+  onCancelEdit,
+  onSaveEdit,
+  onDeleteModel,
+  onOpenAddModal,
+  onEditFormChange,
+}: TokenPriceConfigViewProps) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-4">
+        <RefreshCw className="w-4 h-4 text-[var(--color-text-secondary)] animate-spin" />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium text-[var(--color-text-primary)]">Token 价格配置</h3>
+        <button
+          type="button"
+          onClick={onOpenAddModal}
+          className="flex items-center gap-1 px-2 py-1 text-xs bg-[var(--color-primary)] text-white rounded hover:opacity-90 transition-opacity"
+        >
+          <Plus className="w-3 h-3" />
+          <span>添加模型</span>
+        </button>
+      </div>
+
+      <div className="space-y-2 flex-1 overflow-y-auto">
+        {configs.map((config) => (
+          <div
+            key={config.id}
+            className="p-3 bg-[var(--color-bg-tertiary)] rounded-lg border border-[var(--color-border)]"
+          >
+            {editingId === config.id && editForm ? (
+              // 编辑模式
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) => onEditFormChange({ name: e.target.value })}
+                    className="flex-1 px-2 py-1 text-xs bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)]"
+                  />
+                  <select
+                    value={editForm.currency}
+                    onChange={(e) => onEditFormChange({ currency: e.target.value as '¥' | '$' })}
+                    className="px-2 py-1 text-xs bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)]"
+                  >
+                    <option value="¥">¥</option>
+                    <option value="$">$</option>
+                  </select>
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  <div>
+                    <label className="text-[10px] text-[var(--color-text-secondary)]">缓存</label>
+                    <input
+                      type="number"
+                      step="0.00001"
+                      value={editForm.cachePrice}
+                      onChange={(e) => onEditFormChange({ cachePrice: e.target.value })}
+                      className="w-full px-2 py-1 text-xs bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-[var(--color-text-secondary)]">输入</label>
+                    <input
+                      type="number"
+                      step="0.00001"
+                      value={editForm.inputPrice}
+                      onChange={(e) => onEditFormChange({ inputPrice: e.target.value })}
+                      className="w-full px-2 py-1 text-xs bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-[var(--color-text-secondary)]">输出</label>
+                    <input
+                      type="number"
+                      step="0.00001"
+                      value={editForm.outputPrice}
+                      onChange={(e) => onEditFormChange({ outputPrice: e.target.value })}
+                      className="w-full px-2 py-1 text-xs bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)]"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-[var(--color-text-secondary)]">推理</label>
+                    <input
+                      type="number"
+                      step="0.00001"
+                      value={editForm.reasoningPrice}
+                      onChange={(e) => onEditFormChange({ reasoningPrice: e.target.value })}
+                      className="w-full px-2 py-1 text-xs bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)]"
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={onCancelEdit}
+                    className="px-2 py-1 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                  >
+                    取消
+                  </button>
+                  <button
+                    type="button"
+                    onClick={onSaveEdit}
+                    className="flex items-center gap-1 px-2 py-1 text-xs bg-[var(--color-success)] text-white rounded hover:opacity-90"
+                  >
+                    <Save className="w-3 h-3" />
+                    保存
+                  </button>
+                </div>
+              </div>
+            ) : (
+              // 显示模式
+              <div className="flex items-start justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-sm font-medium text-[var(--color-text-primary)]">{config.name}</span>
+                    <span className="text-xs text-[var(--color-text-secondary)]">{config.currency}</span>
+                    {config.isPreset && (
+                      <span className="text-[10px] px-1 py-0.5 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded">
+                        预设
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3 text-xs text-[var(--color-text-secondary)]">
+                    <span className="flex items-center gap-1">
+                      <Zap className="w-3 h-3" />
+                      缓存: {config.cachePrice}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <FileText className="w-3 h-3" />
+                      输入: {config.inputPrice}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Cpu className="w-3 h-3" />
+                      输出: {config.outputPrice}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Cpu className="w-3 h-3" />
+                      推理: {config.reasoningPrice ?? config.outputPrice}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => onStartEdit(config)}
+                    className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]"
+                    title="编辑"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                  </button>
+                  {!config.isPreset && (
+                    <button
+                      type="button"
+                      onClick={() => onDeleteModel(config.id)}
+                      className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-error)]"
+                      title="删除"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+})
+
 function SettingsPanelInner({ onClose }: SettingsPanelProps) {
   const { data: services, loading: _servicesLoading, error: _servicesError, refetch: refetchServices } = useMcpServices()
 
@@ -66,7 +270,7 @@ function SettingsPanelInner({ onClose }: SettingsPanelProps) {
   })
   const [isDeleting, setIsDeleting] = useState(false)
 
-  // Token 价格配置相关状态 - 必须在组件顶层调用
+  // Token 价格配置相关状态
   const { configs, loading: priceLoading, updatePrice, addCustomModel, deleteModel } = useTokenPrices()
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editForm, setEditForm] = useState<{
@@ -88,8 +292,11 @@ function SettingsPanelInner({ onClose }: SettingsPanelProps) {
     reasoningPrice: '',
   })
 
-  // 开始编辑模型价格
-  const handleStartEdit = (config: typeof configs[0]) => {
+  // 稳定化的 configs 数组
+  const stableConfigs = useMemo(() => configs, [configs])
+
+  // 回调函数
+  const handleStartEdit = useCallback((config: ModelPriceConfig) => {
     setEditingId(config.id)
     setEditForm({
       name: config.name,
@@ -99,16 +306,14 @@ function SettingsPanelInner({ onClose }: SettingsPanelProps) {
       outputPrice: config.outputPrice?.toString() ?? '0',
       reasoningPrice: config.reasoningPrice?.toString() ?? config.outputPrice?.toString() ?? '0',
     })
-  }
+  }, [])
 
-  // 取消编辑
-  const handleCancelEdit = () => {
+  const handleCancelEdit = useCallback(() => {
     setEditingId(null)
     setEditForm(null)
-  }
+  }, [])
 
-// 保存编辑
-  const handleSaveEdit = () => {
+  const handleSaveEdit = useCallback(() => {
     if (!editForm || !editingId) return
     updatePrice(editingId, {
       name: editForm.name,
@@ -120,10 +325,13 @@ function SettingsPanelInner({ onClose }: SettingsPanelProps) {
     })
     setEditingId(null)
     setEditForm(null)
-  }
+  }, [editForm, editingId, updatePrice])
 
-  // 打开添加价格模态框
-  const handleOpenAddPriceModal = () => {
+  const handleDeleteModel = useCallback((id: string) => {
+    deleteModel(id)
+  }, [deleteModel])
+
+  const handleOpenAddPriceModal = useCallback(() => {
     setAddPriceForm({
       id: '',
       name: '',
@@ -134,27 +342,20 @@ function SettingsPanelInner({ onClose }: SettingsPanelProps) {
       reasoningPrice: '',
     })
     setShowAddPriceModal(true)
-  }
+  }, [])
 
-  // 提交添加自定义模型
-  const handleSubmitAddPrice = () => {
-    if (!addPriceForm.id.trim() || !addPriceForm.name.trim()) return
-    addCustomModel({
-      id: addPriceForm.id.trim(),
-      name: addPriceForm.name.trim(),
-      currency: addPriceForm.currency,
-      cachePrice: parseFloat(addPriceForm.cachePrice) || 0,
-      inputPrice: parseFloat(addPriceForm.inputPrice) || 0,
-      outputPrice: parseFloat(addPriceForm.outputPrice) || 0,
-      reasoningPrice: parseFloat(addPriceForm.reasoningPrice) || parseFloat(addPriceForm.outputPrice) || 0,
-    })
-    setShowAddPriceModal(false)
-  }
-
-  // 删除自定义模型
-  const handleDeleteModel = (id: string) => {
-    deleteModel(id)
-  }
+  const handleEditFormChange = useCallback((updates: Partial<{
+    name: string
+    currency: '¥' | '$'
+    cachePrice: string
+    inputPrice: string
+    outputPrice: string
+    reasoningPrice: string
+  }>) => {
+    if (editForm) {
+      setEditForm({ ...editForm, ...updates })
+    }
+  }, [editForm])
 
   // MCP 相关函数
   const mcpServices = services as McpService[] | null
@@ -228,172 +429,19 @@ function SettingsPanelInner({ onClose }: SettingsPanelProps) {
     }
   }
 
-  // Token 价格配置页面组件
-  function TokenPriceConfigView() {
-    return (
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-[var(--color-text-primary)]">Token 价格配置</h3>
-          <button
-            type="button"
-            onClick={handleOpenAddPriceModal}
-            className="flex items-center gap-1 px-2 py-1 text-xs bg-[var(--color-primary)] text-white rounded hover:opacity-90 transition-opacity"
-          >
-            <Plus className="w-3 h-3" />
-            <span>添加模型</span>
-          </button>
-        </div>
-
-        {priceLoading ? (
-          <div className="flex items-center justify-center py-4">
-            <RefreshCw className="w-4 h-4 text-[var(--color-text-secondary)] animate-spin" />
-          </div>
-        ) : (
-          <div className="space-y-2 flex-1 overflow-y-auto">
-            {configs.map((config) => (
-              <div
-                key={config.id}
-                className="p-3 bg-[var(--color-bg-tertiary)] rounded-lg border border-[var(--color-border)]"
-              >
-                {editingId === config.id && editForm ? (
-                  // 编辑模式
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        value={editForm.name}
-                        onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                        className="flex-1 px-2 py-1 text-xs bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)]"
-                      />
-                      <select
-                        value={editForm.currency}
-                        onChange={(e) => setEditForm({ ...editForm, currency: e.target.value as '¥' | '$' })}
-                        className="px-2 py-1 text-xs bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)]"
-                      >
-                        <option value="¥">¥</option>
-                        <option value="$">$</option>
-                      </select>
-                    </div>
-                    <div className="grid grid-cols-4 gap-2">
-                      <div>
-                        <label className="text-[10px] text-[var(--color-text-secondary)]">缓存</label>
-                        <input
-                          type="number"
-                          step="0.00001"
-                          value={editForm.cachePrice}
-                          onChange={(e) => setEditForm({ ...editForm, cachePrice: e.target.value })}
-                          className="w-full px-2 py-1 text-xs bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)]"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] text-[var(--color-text-secondary)]">输入</label>
-                        <input
-                          type="number"
-                          step="0.00001"
-                          value={editForm.inputPrice}
-                          onChange={(e) => setEditForm({ ...editForm, inputPrice: e.target.value })}
-                          className="w-full px-2 py-1 text-xs bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)]"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] text-[var(--color-text-secondary)]">输出</label>
-                        <input
-                          type="number"
-                          step="0.00001"
-                          value={editForm.outputPrice}
-                          onChange={(e) => setEditForm({ ...editForm, outputPrice: e.target.value })}
-                          className="w-full px-2 py-1 text-xs bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)]"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] text-[var(--color-text-secondary)]">推理</label>
-                        <input
-                          type="number"
-                          step="0.00001"
-                          value={editForm.reasoningPrice}
-                          onChange={(e) => setEditForm({ ...editForm, reasoningPrice: e.target.value })}
-                          className="w-full px-2 py-1 text-xs bg-[var(--color-bg-primary)] border border-[var(--color-border)] rounded text-[var(--color-text-primary)]"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={handleCancelEdit}
-                        className="px-2 py-1 text-xs text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
-                      >
-                        取消
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleSaveEdit}
-                        className="flex items-center gap-1 px-2 py-1 text-xs bg-[var(--color-success)] text-white rounded hover:opacity-90"
-                      >
-                        <Save className="w-3 h-3" />
-                        保存
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  // 显示模式
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-sm font-medium text-[var(--color-text-primary)]">{config.name}</span>
-                        <span className="text-xs text-[var(--color-text-secondary)]">{config.currency}</span>
-                        {config.isPreset && (
-                          <span className="text-[10px] px-1 py-0.5 bg-[var(--color-primary)]/10 text-[var(--color-primary)] rounded">
-                            预设
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-3 text-xs text-[var(--color-text-secondary)]">
-                        <span className="flex items-center gap-1">
-                          <Zap className="w-3 h-3" />
-                          缓存: {config.cachePrice}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <FileText className="w-3 h-3" />
-                          输入: {config.inputPrice}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Cpu className="w-3 h-3" />
-                          输出: {config.outputPrice}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Cpu className="w-3 h-3" />
-                          推理: {config.reasoningPrice ?? config.outputPrice}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() => handleStartEdit(config)}
-                        className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]"
-                        title="编辑"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                      </button>
-                      {!config.isPreset && (
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteModel(config.id)}
-                          className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-error)]"
-                          title="删除"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    )
+  // 提交添加自定义模型
+  const handleSubmitAddPrice = () => {
+    if (!addPriceForm.id.trim() || !addPriceForm.name.trim()) return
+    addCustomModel({
+      id: addPriceForm.id.trim(),
+      name: addPriceForm.name.trim(),
+      currency: addPriceForm.currency,
+      cachePrice: parseFloat(addPriceForm.cachePrice) || 0,
+      inputPrice: parseFloat(addPriceForm.inputPrice) || 0,
+      outputPrice: parseFloat(addPriceForm.outputPrice) || 0,
+      reasoningPrice: parseFloat(addPriceForm.reasoningPrice) || parseFloat(addPriceForm.outputPrice) || 0,
+    })
+    setShowAddPriceModal(false)
   }
 
   // About 页面组件
@@ -454,92 +502,105 @@ function SettingsPanelInner({ onClose }: SettingsPanelProps) {
           })}
         </div>
 
-      {/* 右侧内容区域 */}
-      <div className="flex-1 flex flex-col">
-        {/* 内容区域 */}
-        <div className="flex-1 overflow-y-auto p-4">
+        {/* 右侧内容区域 */}
+        <div className="flex-1 flex flex-col">
+          {/* 内容区域 */}
+          <div className="flex-1 overflow-y-auto p-4">
+            {activeSection === 'mcp' && (
+              <div className="space-y-3">
+                {/* 添加 MCP 服务按钮 */}
+                <button
+                  type="button"
+                  onClick={handleOpenAddModal}
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90 transition-opacity"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>添加 MCP</span>
+                </button>
+
+                {!mcpServices || mcpServices.length === 0 ? (
+                  <div className="text-center text-[var(--color-text-secondary)] text-sm py-8">
+                    暂无 MCP 服务
+                  </div>
+                ) : (
+                  mcpServices.map((service) => {
+                    const isNonDeletable = isNonDeletableService(service.name)
+
+                    return (
+                      <div
+                        key={service.name}
+                        className="p-4 bg-[var(--color-bg-tertiary)] rounded-lg border border-[var(--color-border)] relative group"
+                      >
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="p-1.5 rounded-md bg-[var(--color-primary)]/10">
+                              <Server className="w-4 h-4 text-[var(--color-primary)]" />
+                            </div>
+                            <div className="min-w-0">
+                              <h3 className="text-sm font-medium text-[var(--color-text-primary)] truncate">
+                                {service.displayName || service.name}
+                              </h3>
+                              <p className="text-xs text-[var(--color-text-secondary)] truncate">
+                                {service.name}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            {/* 删除按钮 */}
+                            {!isNonDeletable && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenDeleteConfirm(service.name, service.displayName || service.name)}
+                                className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-error)] opacity-0 group-hover:opacity-100 transition-all"
+                                title="删除 MCP 服务"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-1.5">
+                            <Plug className="w-3 h-3 text-[var(--color-text-secondary)]" />
+                            <span className="text-[var(--color-text-secondary)]">{service.type}</span>
+                          </div>
+                          <span className={service.enabled ? 'text-[var(--color-success)]' : 'text-[var(--color-text-secondary)]'}>
+                            {service.enabled ? '已启用' : '已禁用'}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            )}
+
+            {activeSection === 'prices' && (
+              <TokenPriceConfigView
+                configs={stableConfigs}
+                loading={priceLoading}
+                editingId={editingId}
+                editForm={editForm}
+                onStartEdit={handleStartEdit}
+                onCancelEdit={handleCancelEdit}
+                onSaveEdit={handleSaveEdit}
+                onDeleteModel={handleDeleteModel}
+                onOpenAddModal={handleOpenAddPriceModal}
+                onEditFormChange={handleEditFormChange}
+              />
+            )}
+            
+            {activeSection === 'about' && <AboutView />}
+          </div>
+
+          {/* 统计信息 */}
           {activeSection === 'mcp' && (
-            <div className="space-y-3">
-              {/* 添加 MCP 服务按钮 */}
-              <button
-                type="button"
-                onClick={handleOpenAddModal}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm bg-[var(--color-primary)] text-white rounded-lg hover:opacity-90 transition-opacity"
-              >
-                <Plus className="w-4 h-4" />
-                <span>添加 MCP</span>
-              </button>
-
-              {!mcpServices || mcpServices.length === 0 ? (
-                <div className="text-center text-[var(--color-text-secondary)] text-sm py-8">
-                  暂无 MCP 服务
-                </div>
-              ) : (
-                mcpServices.map((service) => {
-                  const isNonDeletable = isNonDeletableService(service.name)
-
-                  return (
-                    <div
-                      key={service.name}
-                      className="p-4 bg-[var(--color-bg-tertiary)] rounded-lg border border-[var(--color-border)] relative group"
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <div className="p-1.5 rounded-md bg-[var(--color-primary)]/10">
-                            <Server className="w-4 h-4 text-[var(--color-primary)]" />
-                          </div>
-                          <div className="min-w-0">
-                            <h3 className="text-sm font-medium text-[var(--color-text-primary)] truncate">
-                              {service.displayName || service.name}
-                            </h3>
-                            <p className="text-xs text-[var(--color-text-secondary)] truncate">
-                              {service.name}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1.5 flex-shrink-0">
-                          {/* 删除按钮 */}
-                          {!isNonDeletable && (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenDeleteConfirm(service.name, service.displayName || service.name)}
-                              className="p-1 text-[var(--color-text-secondary)] hover:text-[var(--color-error)] opacity-0 group-hover:opacity-100 transition-all"
-                              title="删除 MCP 服务"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-1.5">
-                          <Plug className="w-3 h-3 text-[var(--color-text-secondary)]" />
-                          <span className="text-[var(--color-text-secondary)]">{service.type}</span>
-                        </div>
-                        <span className={service.enabled ? 'text-[var(--color-success)]' : 'text-[var(--color-text-secondary)]'}>
-                          {service.enabled ? '已启用' : '已禁用'}
-                        </span>
-                      </div>
-                    </div>
-                  )
-                })
-              )}
+            <div className="px-4 py-3 border-t border-[var(--color-border)] text-xs text-[var(--color-text-secondary)]">
+              <span>总服务: {mcpServices?.length || 0}</span>
             </div>
           )}
-
-          {activeSection === 'prices' && <TokenPriceConfigView />}
-          
-          {activeSection === 'about' && <AboutView />}
         </div>
-
-        {/* 统计信息 */}
-        {activeSection === 'mcp' && (
-          <div className="px-4 py-3 border-t border-[var(--color-border)] text-xs text-[var(--color-text-secondary)]">
-            <span>总服务: {mcpServices?.length || 0}</span>
-          </div>
-        )}
-      </div>
       </div>
 
       {/* 添加 MCP 服务模态框 */}
