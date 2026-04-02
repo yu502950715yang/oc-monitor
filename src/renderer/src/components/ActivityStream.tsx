@@ -128,32 +128,35 @@ export default function ActivityStream({ activities, isLoading }: ActivityStream
 
   return (
     <div className="flex-1 bg-[var(--color-bg-primary)] flex flex-col min-h-0">
-      {/* 标题 */}
-      <div className="px-4 py-3 border-b border-[var(--color-border)] flex items-center justify-between flex-shrink-0">
-        <h2 className="font-medium text-[var(--color-text-primary)]">活动流</h2>
-        <div className="flex items-center gap-2">
+      {/* 标题 + 状态栏 */}
+      <div className="px-4 py-2 border-b border-[var(--color-border)] flex items-center justify-between flex-shrink-0 gap-4">
+        {/* 左侧标题 */}
+        <h2 className="font-medium text-[var(--color-text-primary)] whitespace-nowrap">活动流</h2>
+        
+        {/* 中间状态信息 */}
+        {liveSummary && (
+          <div className="flex items-center gap-4 flex-1 min-w-0 overflow-hidden">
+            {/* 项目 */}
+            <span className="text-xs text-[var(--color-text-secondary)] whitespace-nowrap">
+              项目: <span className="text-[var(--color-text-primary)]">{liveSummary.projectName || '-'}</span>
+            </span>
+            {/* 成本 */}
+            <span className="text-xs text-[var(--color-text-secondary)] whitespace-nowrap">
+              成本: <span className="text-[var(--color-warning)] font-medium">{liveSummary.currency}{liveSummary.totalCost.toFixed(2)}</span>
+            </span>
+            {/* 速度 */}
+            <span className="text-xs text-[var(--color-text-secondary)] whitespace-nowrap">
+              速度: <span className="text-[var(--color-info)] font-medium">{liveSummary.outputSpeed} tokens/s</span>
+            </span>
+          </div>
+        )}
+        
+        {/* 右侧实时状态 */}
+        <div className="flex items-center gap-2 flex-shrink-0">
           <span className="w-2 h-2 rounded-full bg-[var(--color-success)] animate-pulse"></span>
           <span className="text-xs text-[var(--color-text-secondary)]">实时</span>
         </div>
       </div>
-
-      {/* 状态栏 */}
-      {liveSummary && (
-        <div className="px-4 py-2 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] flex items-center gap-4 flex-shrink-0">
-          {/* 项目 */}
-          <span className="text-sm text-[var(--color-text-secondary)]">
-            项目: <span className="text-[var(--color-text-primary)]">{liveSummary.projectName || '-'}</span>
-          </span>
-          {/* 成本 */}
-          <span className="text-sm text-[var(--color-text-secondary)]">
-            成本: <span className="text-[var(--color-warning)] font-medium">{liveSummary.currency}{liveSummary.totalCost.toFixed(2)}</span>
-          </span>
-          {/* 速度 */}
-          <span className="text-sm text-[var(--color-text-secondary)]">
-            速度: <span className="text-[var(--color-info)] font-medium">{liveSummary.outputSpeed} tokens/s</span>
-          </span>
-        </div>
-      )}
 
       
 
