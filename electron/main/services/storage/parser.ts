@@ -44,7 +44,7 @@ export interface PartMeta {
   sessionID: string;
   type?: string;
   tool?: string;
-  state?: string;
+  state?: Record<string, unknown>;
   createdAt: Date;
   data: unknown;
 }
@@ -249,7 +249,10 @@ function queryPartsFromSqlite(sessionID: string): PartMeta[] {
       // 从 data JSON 中提取 type, tool, state
       const type = parsedData?.type ? String(parsedData.type) : undefined;
       const tool = parsedData?.tool ? String(parsedData.tool) : undefined;
-      const state = parsedData?.state ? String(parsedData.state) : undefined;
+      // state 应该是对象而不是字符串，以便后续代码直接访问 state.input.name 等属性
+      const state = parsedData?.state && typeof parsedData.state === 'object' 
+        ? parsedData.state as Record<string, unknown> 
+        : undefined;
       
       parts.push({
         id: row.id || '',
@@ -380,7 +383,7 @@ function parsePartFile(filePath: string): PartMeta | null {
     sessionID: string;
     type?: string;
     tool?: string;
-    state?: string;
+    state?: Record<string, unknown>;
     timeCreated?: number;
     createdAt?: string;
     data?: unknown;
