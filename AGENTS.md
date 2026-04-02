@@ -1,7 +1,7 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-03-26
-**Commit:** 1354aef
+**Generated:** 2026-04-02
+**Commit:** d8474e3f
 **Branch:** main
 
 ## OVERVIEW
@@ -67,21 +67,27 @@ OC 监控助手 — 基于 Electron + React 19 的桌面应用，实时监控 Op
 - **前端输出**: ESM → `dist/`
 - **双 tsconfig**: 根目录(前端) + electron/(后端)
 - **配置集中**: 全部在 `electron/main/config.ts`
+- **测试框架**: Vitest (`vitest.config.ts`)
+- **测试命令**: `npm run test` / `npm run test:watch`
+- **测试目录**: `tests/` (后端) + `components/__tests__/` (前端)
 
 ## ANTI-PATTERNS (THIS PROJECT)
 
-1. **空 Catch 块** — `parser.ts:237,284` 静默吞掉 JSON 解析错误
+1. **空 Catch 块** — `data-loader/index.ts:321,360` 静默吞掉错误
 2. **生产环境 console.log** — 多处调试语句未移除
-   - `AppContext.tsx:55-57,120,126,137,172-178`
-   - `ActivityStream.tsx:105`
-3. **过度使用 `any`** — preload/index.ts 8处, server.ts 4处
-4. **`as any` 类型断言** — sessions.ts 9处, activityLogic.ts 7处
-5. **备份文件未清理** — `parser.ts.bak`, `sessions.ts.bak` 应删除
-6. **SQL 注入风险** — `parser.ts:228,271` 直接拼接 sessionID 到 SQL（仅简单转义）
-7. **类型推断不严格** — `useApi.ts` 多处 `any[]` 参数
-8. **无测试框架** — 项目未配置任何测试框架 (Jest/Vitest)
-9. **无 CI/CD** — 无 GitHub Actions 或其他自动化流水线
-10. **lint 脚本失效** — package.json 有 lint 命令但无 ESLint 配置
+   - `config/loader.ts:266-349` (7处)
+   - `utils/error-handling/handler.ts:71,74`
+   - `routes/mcp-services.ts:220,271`
+3. **过度使用 `any`** — preload/index.ts 多处, server.ts 4处
+4. **`as any` 类型断言** — sessions.ts 9处, session-analyzer 1处
+5. **备份文件未清理** — `sessions.ts.bak`, `parser.ts.bak` 应删除
+6. **类型推断不严格** — `useApi.ts` 多处 `any[]` 参数
+7. **lint 脚本失效** — package.json 有 lint 命令但无 ESLint 配置
+8. **TODO 未完成** — 5处 TODO 注释
+   - `types/part.ts:59`
+   - `services/session-analyzer/index.ts:382`
+   - `logic/activityLogic.ts:100`
+   - `components/MCPConfigPage.tsx:116,127`
 
 ## UNIQUE STYLES
 
@@ -103,9 +109,10 @@ npm run typecheck     # TypeScript 类型检查
 
 - 服务器端口: 50234 (config.ts)
 - 前端轮询: 3 秒间隔
-- 无测试框架，无 CI/CD
+- 无 CI/CD
 - 无 ESLint/Prettier 配置
 - 前端源码嵌套: `src/renderer/src/` (非标准 src/)
 - 构建: electron-builder (NSIS/DMG)
 - 根目录杂项: `fix.js` (用途不明), `.sisyphus/` (任务规划)
 - 开发效率: electron:dev 每次全量编译 TypeScript
+- 测试: Vitest 已配置，13个测试文件

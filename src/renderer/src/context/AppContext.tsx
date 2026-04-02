@@ -3,7 +3,7 @@ import type { Session } from '../components/SessionList'
 import type { Activity } from '../components/ActivityStream'
 import type { Plan } from '../hooks/useApi'
 import type { SessionNode } from '../components/ActivityTree'
-import { useSessions, usePlan, useActivity, useSessionTree, useSessionStats, type SessionTreeNode } from '../hooks/useApi'
+import { useSessions, usePlan, useActivity, useSessionTree, useSessionStats, useLiveSummary, type SessionTreeNode, type LiveSummaryResponse } from '../hooks/useApi'
 import { usePolling } from '../hooks/usePolling'
 
 // 后端返回的会话统计信息
@@ -42,6 +42,7 @@ interface AppState {
   isLoading: boolean
   error: string | null
   sessionStats: SessionStats | null  // 后端返回的完整统计
+  liveSummary: LiveSummaryResponse | null  // 实时摘要数据
 }
 
 interface AppContextType extends AppState {
@@ -53,6 +54,7 @@ interface AppContextType extends AppState {
   refreshSessionTree: () => void  // 单独刷新活动树数据
   loadMoreSessions: () => void  // 加载更多会话
   sessionStats: SessionStats | null  // 后端返回的完整统计
+  liveSummary: LiveSummaryResponse | null  // 实时摘要数据
 }
 
 const AppContext = createContext<AppContextType | null>(null)
@@ -79,6 +81,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [cachedSessionTree, setCachedSessionTree] = useState<SessionTreeNode | null>(null)
   const [sessionLimit, setSessionLimit] = useState(20)
   const [sessionStats, setSessionStats] = useState<SessionStats | null>(null)
+  const [liveSummary, setLiveSummary] = useState<LiveSummaryResponse | null>(null)
 
   const { data: apiSessions, loading: sessionsLoading, error: sessionsError, refetch: refetchSessions } = useSessions(sessionLimit)
   // 获取当前会话的 directory 用于获取计划数据
@@ -88,6 +91,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { data: apiActivity, loading: activityLoading, refetch: refetchActivity } = useActivity(selectedSessionId)
   const { data: sessionTree, loading: sessionTreeLoading, refetch: refetchSessionTree } = useSessionTree(selectedSessionId)
   const { data: sessionStatsData, refetch: refetchSessionStats } = useSessionStats(selectedSessionId)
+  const { data: liveSummaryData, refetch: refetchLiveSummary } = useLiveSummary(selectedSessionId)
   
   
   // 缓存 sessionTree，防止轮询时短暂为空导致节点消失
@@ -292,6 +296,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [sessionStatsData])
 
+  // 使用 useLiveSummary hook 获取实时摘要
+  useEffect(() => {
+    if (liveSummaryData) {
+      setLiveSummary(liveSummaryData)
+    }
+  }, [liveSummaryData])
+
   // 注意：apiPlan -> plans 的转换在第 113-128 行的 useEffect 中处理
   // 不再重复设置，避免 items 字段丢失
 
@@ -300,12 +311,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     refetchPlan()
     refetchActivity()
     refetchSessionStats()
+    refetchLiveSummary()
     // 活动树视图时不自动刷新 sessionTree（避免数据竞态导致节点闪烁）
     // 活动树用户需手动点击刷新按钮
     if (activeView !== 'tree') {
       refetchSessionTree()
     }
-  }, [refetchSessions, refetchPlan, refetchActivity, refetchSessionStats, refetchSessionTree, activeView])
+  }, [refetchSessions, refetchPlan, refetchActivity, refetchSessionStats, refetchLiveSummary, refetchSessionTree, activeView])
 
   // 单独刷新活动树数据（手动刷新时使用）
   const refreshSessionTree = useCallback(() => {
@@ -416,6 +428,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         refreshSessionTree,
         loadMoreSessions,
         sessionStats,
+        liveSummary,
       }}
     >
       {children}

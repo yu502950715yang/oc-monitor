@@ -595,11 +595,133 @@ export function registerSessionRoutes(app: Hono) {
       return state?.status === "error" || state?.error;
     }).length;
 
+    // 解析前端传来的价格配置
+    let clientTokenPrices: Record<string, { currency: string; cache: number; input: number; output: number; reasoning: number }> = {};
+    const pricesParam = c.req.query("prices");
+    if (pricesParam) {
+      try {
+        clientTokenPrices = JSON.parse(decodeURIComponent(pricesParam as string));
+      } catch (e) {
+        // ignore parse error
+      }
+    }
+
+    // Token 价格配置（单位：每 K tokens 的价格）
+    const defaultPrices: Record<string, { currency: string; cache: number; input: number; output: number; reasoning: number }> = {
+      // MiniMax 系列
+      'minimax-m2.5': { currency: '¥', cache: 0.00021, input: 0.00210, output: 0.00840, reasoning: 0.00840 },
+      'minimax-m2.5-free': { currency: '¥', cache: 0.00021, input: 0.00210, output: 0.00840, reasoning: 0.00840 },
+      'minimax': { currency: '¥', cache: 0.00021, input: 0.00210, output: 0.00840, reasoning: 0.00840 },
+      // Moonshot (Kimi)
+      'kimi-k2.5': { currency: '¥', cache: 0.00000, input: 0.00100, output: 0.00400, reasoning: 0.00400 },
+      'moonshotai': { currency: '¥', cache: 0.00000, input: 0.00100, output: 0.00400, reasoning: 0.00400 },
+      // GLM (Zhipu)
+      'glm-5': { currency: '¥', cache: 0.00010, input: 0.00100, output: 0.00400, reasoning: 0.00400 },
+      'glm': { currency: '¥', cache: 0.00010, input: 0.00100, output: 0.00400, reasoning: 0.00400 },
+      'zai-org': { currency: '¥', cache: 0.00010, input: 0.00100, output: 0.00400, reasoning: 0.00400 },
+      // OpenAI
+      'gpt-5-nano': { currency: '$', cache: 0.00000, input: 0.00010, output: 0.00020, reasoning: 0.00020 },
+      'gpt-4o': { currency: '$', cache: 0.00021, input: 0.00250, output: 0.01000, reasoning: 0.01000 },
+      // Anthropic
+      'claude-3.5-sonnet': { currency: '$', cache: 0.00015, input: 0.00300, output: 0.01500, reasoning: 0.01500 },
+      // Google
+      'gemini-1.5-pro': { currency: '$', cache: 0.00000, input: 0.00035, output: 0.00140, reasoning: 0.00140 },
+    };
+
+    // 合并前端配置和默认配置（前端配置优先）
+    const tokenPrices = { ...defaultPrices, ...clientTokenPrices };
+
+    // 从 modelID 提取模型标识
+    const extractModelKey = (modelId: string): string => {
+      if (!modelId) return '';
+      const modelIdLower = modelId.toLowerCase();
+
+      // 1. 首先检查精确匹配（完全相等）
+      for (const key of Object.keys(tokenPrices)) {
+        if (modelIdLower === key.toLowerCase()) {
+          return key;
+        }
+      }
+
+      // 2. 然后检查包含匹配（但优先匹配更长的 key）
+      const sortedKeys = Object.keys(tokenPrices).sort((a, b) => b.length - a.length);
+      for (const key of sortedKeys) {
+        if (modelIdLower.includes(key.toLowerCase())) {
+          return key;
+        }
+      }
+
+      return '';
+    };
+
+    // 成本计算
+    let totalCost = 0;
+    let costCurrency = '¥';
+
+    // 收集 message 时间序列数据用于计算 outputSpeed
+    const messageTimeSeries: { timestamp: number; output: number }[] = [];
+    const now = Date.now();
+
+    for (const m of messages) {
+      const msgData = m.data as any;
+      const tokens = msgData?.tokens;
+
+      if (tokens) {
+        const output = Number(tokens.output || tokens.completion || 0) || 0;
+        const input = Number(tokens.input || tokens.prompt || 0) || 0;
+        const reasoning = Number(tokens.reasoning || 0) || 0;
+        let cache = 0;
+        if (typeof tokens.cache === 'number') {
+          cache = tokens.cache;
+        } else if (tokens.cache && typeof tokens.cache === 'object') {
+          cache = Number(tokens.cache.read || 0) + Number(tokens.cache.write || 0);
+        }
+
+        // 使用前端配置的价格计算费用
+        const modelId = msgData?.modelID || '';
+        const modelKey = extractModelKey(modelId);
+        const price = tokenPrices[modelKey];
+
+        if (price) {
+          const cost = (cache * price.cache + input * price.input + output * price.output + reasoning * (price.reasoning || price.output)) / 1000;
+          totalCost += cost;
+          costCurrency = price.currency;
+        }
+
+        // 收集时间序列数据用于计算 outputSpeed
+        const msgCreatedAt = m.createdAt?.getTime?.() || new Date(m.createdAt as any).getTime();
+        if (msgCreatedAt && output > 0) {
+          messageTimeSeries.push({ timestamp: msgCreatedAt, output });
+        }
+      }
+    }
+
+    // 计算 outputSpeed（最近 5 分钟的平均每秒输出 token）
+    const fiveMinutesAgo = now - 300000;
+    let recentOutput = 0;
+    for (const point of messageTimeSeries) {
+      if (point.timestamp >= fiveMinutesAgo) {
+        recentOutput += point.output;
+      }
+    }
+    const outputSpeed = Math.round((recentOutput / 300) * 100) / 100; // tok/s，保留两位小数
+
+    // 计算 sessionDuration 和 durationProgress
+    const sessionCreatedAt = session.createdAt?.getTime?.() || new Date(session.createdAt as any).getTime();
+    const sessionDuration = now - sessionCreatedAt;
+    const fiveHoursInMs = 5 * 60 * 60 * 1000;
+    const durationProgress = Math.min(Math.round((sessionDuration / fiveHoursInMs) * 100), 100);
+
+    // 提取 projectName（从 directory 路径的最后一段）
+    const projectName = session.directory ? session.directory.split(/[/\\]/).pop() || '' : '';
+
     return c.json({
       session: {
         id: session.id,
         title: session.title,
         status: session.status,
+        directory: session.directory,
+        createdAt: session.createdAt.toISOString(),
       },
       tokenData: {
         total: totalTokens,
@@ -617,6 +739,14 @@ export function registerSessionRoutes(app: Hono) {
       errors: {
         count: errorCount,
         rate: toolParts.length > 0 ? Math.round((errorCount / toolParts.length) * 100) : 0,
+      },
+      liveSummary: {
+        projectName,
+        totalCost: Math.round(totalCost * 100) / 100,
+        currency: costCurrency,
+        outputSpeed,
+        sessionDuration,
+        durationProgress,
       },
     });
   });

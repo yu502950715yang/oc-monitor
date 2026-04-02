@@ -47,8 +47,10 @@ src/renderer/src/
 ## ANTI-PATTERNS
 
 1. **生产环境 console.log** — 调试日志未移除
-   - `AppContext.tsx:55-57, 114, 120-121, 131, 172-178`
-   - `App.tsx:58`
-   - `ActivityStream.tsx:83`
+   - `AppContext.tsx:55-57,120,126,137,172-178`
+   - `ActivityStream.tsx:105`
 
 2. **类型 any** — useApi.ts 部分位置类型推断不严格
+
+3. **TODO 未完成** — 2处
+   - `components/MCPConfigPage.tsx:116,127`

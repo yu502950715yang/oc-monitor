@@ -367,6 +367,54 @@ export function useSessionStats(id: string | null) {
   return { ...state, refetch: fetchSessionStats }
 }
 
+// LiveSummary API response type
+export interface LiveSummaryResponse {
+  projectName: string
+  totalCost: number
+  currency: string
+  outputSpeed: number
+  sessionDuration: number
+  durationProgress: number
+}
+
+// Hook for fetching live summary data
+export function useLiveSummary(sessionId: string | null) {
+  const [state, setState] = useState<ApiState<LiveSummaryResponse | null>>({
+    data: null,
+    loading: true,
+    error: null,
+  })
+
+  const fetchLiveSummary = useCallback(async () => {
+    if (!sessionId) {
+      setState({ data: null, loading: false, error: null })
+      return
+    }
+    setState(prev => ({ ...prev, loading: true, error: null }))
+    try {
+      const result = await window.electronAPI.api.getDashboard(sessionId)
+      // 从 Dashboard 数据的 liveSummary 字段中提取
+      const liveSummary: LiveSummaryResponse = {
+        projectName: result.liveSummary?.projectName || '',
+        totalCost: result.liveSummary?.totalCost || 0,
+        currency: result.liveSummary?.currency || 'USD',
+        outputSpeed: result.liveSummary?.outputSpeed || 0,
+        sessionDuration: result.liveSummary?.sessionDuration || 0,
+        durationProgress: result.liveSummary?.durationProgress || 0,
+      }
+      setState({ data: liveSummary, loading: false, error: null })
+    } catch (err) {
+      setState({ data: null, loading: false, error: err as Error })
+    }
+  }, [sessionId])
+
+  useEffect(() => {
+    fetchLiveSummary()
+  }, [fetchLiveSummary])
+
+  return { ...state, refetch: fetchLiveSummary }
+}
+
 // Dashboard API response type
 export interface DashboardData {
   tokenData: {

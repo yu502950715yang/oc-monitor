@@ -1,6 +1,6 @@
 # OC 监控助手
 
-实时监控 OpenCode 智能体活动的桌面应用
+实时监控 OpenCode 智能体活动的桌面应用，基于 Electron + React 19 构建。
 
 [English](./README_en.md)
 
@@ -19,8 +19,14 @@
 # 安装依赖
 npm install
 
-# 开发模式
+# 开发模式（前端）
 npm run dev
+
+# 开发模式（Electron）
+npm run dev:electron
+
+# 构建前端
+npm run build
 
 # 构建 Windows 安装包
 npm run build:win
@@ -33,16 +39,20 @@ release\win-unpacked\OCMonitor.exe
 
 - **Electron 33** - 桌面框架
 - **React 19 + Vite 7** - 前端
-- **Hono** - 嵌入式 HTTP 服务
-- **Tailwind CSS** - 样式
+- **Hono 4** - 嵌入式 HTTP 服务
+- **Tailwind CSS 3** - 样式
 - **@xyflow/react** - 活动树可视化
 - **chokidar** - 文件监控
+- **sql.js** - 内存 SQLite
+- **Vitest** - 测试框架
 
 ## 数据来源
 
 应用读取 OpenCode 本地存储：
 - Windows: `%USERPROFILE%\.local\share\opencode\storage\`
 - macOS: `~/.local/share/opencode/storage/`
+
+数据优先从 SQLite 数据库读取，回退到 JSON 文件。
 
 ## 配置
 
@@ -52,6 +62,29 @@ release\win-unpacked\OCMonitor.exe
 server: { port: 50234 },  // 服务器端口
 polling: { interval: 3000 },  // 轮询间隔（毫秒）
 window: { width: 1200, height: 800 },  // 窗口大小
+```
+
+## 项目结构
+
+```
+electron/              # Electron 主进程
+├── main/              # 主进程代码
+│   ├── index.ts       # 应用入口
+│   ├── server.ts      # HTTP 服务器
+│   ├── config.ts      # 配置
+│   ├── routes/        # API 路由
+│   ├── services/      # 后端服务
+│   └── logic/         # 业务逻辑
+└── preload/           # 预加载脚本
+
+src/renderer/          # React 前端
+└── src/
+    ├── components/    # UI 组件
+    ├── hooks/         # React Hooks
+    └── context/       # 状态管理
+
+tests/                 # 后端测试
+src/.../components/__tests__/  # 前端测试
 ```
 
 ## 注意事项
