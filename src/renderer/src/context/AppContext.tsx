@@ -40,6 +40,8 @@ interface AppState {
   selectedSessionId: string | null
   activeView: 'stream' | 'tree' | 'dashboard'
   isLoading: boolean
+  isRefreshing: boolean  // 后台轮询中状态（不显示骨架屏）
+  isSessionSwitching: boolean  // 新增：会话切换中状态
   error: string | null
   sessionStats: SessionStats | null  // 后端返回的完整统计
   liveSummary: LiveSummaryResponse | null  // 实时摘要数据
@@ -53,8 +55,8 @@ interface AppContextType extends AppState {
   refresh: () => void
   refreshSessionTree: () => void  // 单独刷新活动树数据
   loadMoreSessions: () => void  // 加载更多会话
-  sessionStats: SessionStats | null  // 后端返回的完整统计
-  liveSummary: LiveSummaryResponse | null  // 实时摘要数据
+  isSessionSwitching: boolean  // 会话切换中状态
+  isRefreshing: boolean  // 后台轮询中状态
 }
 
 const AppContext = createContext<AppContextType | null>(null)
@@ -75,6 +77,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [totalSessions, setTotalSessions] = useState(0)
   const [runningSessions, setRunningSessions] = useState(0)
   const [activities, setActivities] = useState<Activity[]>([])
+  const [cachedActivities, setCachedActivities] = useState<Activity[]>([])  // 缓存旧活动数据
   const [plans, setPlans] = useState<Plan[]>([])
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null)
   const [activeView, setActiveView] = useState<'stream' | 'tree' | 'dashboard'>('stream')
@@ -82,6 +85,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [sessionLimit, setSessionLimit] = useState(20)
   const [sessionStats, setSessionStats] = useState<SessionStats | null>(null)
   const [liveSummary, setLiveSummary] = useState<LiveSummaryResponse | null>(null)
+  const [isSessionSwitching, setIsSessionSwitching] = useState(false)
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false)  // 首次加载完成标记
+  const [isRefreshing, setIsRefreshing] = useState(false)  // 后台轮询状态
 
   const { data: apiSessions, loading: sessionsLoading, error: sessionsError, refetch: refetchSessions } = useSessions(sessionLimit)
   // 获取当前会话的 directory 用于获取计划数据
@@ -307,6 +313,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // 不再重复设置，避免 items 字段丢失
 
   const refresh = useCallback(() => {
+    // 标记后台轮询开始（不显示骨架屏）
+    setIsRefreshing(true)
+    
     refetchSessions()
     refetchPlan()
     refetchActivity()
@@ -329,12 +338,49 @@ export function AppProvider({ children }: { children: ReactNode }) {
     enabled: true,
   })
 
-  const isLoading = sessionsLoading || planLoading || activityLoading
+  // 只有首次加载时显示骨架屏，后续轮询不显示
+  // 初始加载完成前：loading 为 true 则显示骨架屏
+  // 初始加载完成后：即使 loading 为 true 也不显示骨架屏（静默后台刷新）
+  const isLoading = !hasLoadedOnce && (sessionsLoading || planLoading || activityLoading)
   const error = (sessionsError || planError)?.message || null
 
+  // 监听 selectedSessionId 变化：切换会话时重置加载状态，显示骨架屏
+  const [lastSelectedSessionId, setLastSelectedSessionId] = useState<string | null>(null)
+  useEffect(() => {
+    // 只有当之前已加载过、且会话确实发生变化时，才重置加载状态
+    if (hasLoadedOnce && selectedSessionId && selectedSessionId !== lastSelectedSessionId) {
+      setHasLoadedOnce(false)  // 切换会话时显示骨架屏
+    }
+    setLastSelectedSessionId(selectedSessionId)
+  }, [selectedSessionId, hasLoadedOnce, lastSelectedSessionId])
+
+  // 监听 loading 状态
+  useEffect(() => {
+    // 首次加载完成时设置标记
+    if (!hasLoadedOnce && !sessionsLoading && !planLoading && !activityLoading) {
+      setHasLoadedOnce(true)
+    }
+  }, [sessionsLoading, planLoading, activityLoading, hasLoadedOnce])
+
+  // 监听 loading 状态：当所有数据加载完成后，清除后台轮询标记
+  // 这样 isRefreshing 会在每次轮询后短暂为 true，数据返回后变为 false
+  useEffect(() => {
+    if (isRefreshing && !isLoading) {
+      // 数据已返回，清除后台轮询标记
+      setIsRefreshing(false)
+    }
+  }, [isLoading, isRefreshing])
+
   const setSelectedSession = useCallback((id: string | null) => {
+    // 切换会话时：标记切换状态，保留旧数据
+    if (id !== selectedSessionId && selectedSessionId) {
+      setIsSessionSwitching(true)
+      // 保留当前活动数据，直到新数据到达
+      setCachedActivities(activities)
+    }
     setSelectedSessionId(id)
-  }, [])
+    // 清除切换状态标记（在新的 activity 数据到达后清除）
+  }, [selectedSessionId, activities])
 
   const handleSetActiveView = useCallback((view: 'stream' | 'tree' | 'dashboard') => {
     setActiveView(view)
@@ -419,6 +465,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         selectedSessionId,
         activeView,
         isLoading,
+        isRefreshing,
+        isSessionSwitching,
         error,
         setSelectedSession,
         setActiveView: handleSetActiveView,

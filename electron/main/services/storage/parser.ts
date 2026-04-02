@@ -1,8 +1,7 @@
-import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, basename } from "node:path";
-import { homedir } from "node:os";
 import log from "electron-log";
-import initSqlJs, { Database } from "sql.js";
+import * as sqlite from "./sqlite-conn";
 
 export type SessionStatus = 'running' | 'waiting' | 'completed' | 'error';
 
@@ -71,176 +70,131 @@ export interface PlanItem {
   line: number;
 }
 
-// SQLite database instance
-let db: Database | null = null;
-let sqlJsInitialized = false;
-let lastDbFileMtime: number = 0;
-
-// ==================== 路径获取函数 ====================
-
-function getOpenCodePath(): string {
-  const storageRoot = process.env.XDG_DATA_HOME || join(homedir(), ".local", "share");
-  return join(storageRoot, "opencode");
-}
-
-function getStoragePath(): string {
-  return join(getOpenCodePath(), "storage");
-}
+// SQLite state is now managed by sqlite-conn module
+// 路径函数已在 sqlite-conn.ts 中定义：getOpenCodePath, getStoragePath, getDbPath
+// 这里保留用于兼容 JSON 回退的函数
 
 function getSessionPath(): string {
-  return join(getStoragePath(), "session");
+  return join(sqlite.getStoragePath(), "session");
 }
 
 function getMessagePath(): string {
-  return join(getStoragePath(), "message");
+  return join(sqlite.getStoragePath(), "message");
 }
 
 function getPartPath(): string {
-  return join(getStoragePath(), "part");
+  return join(sqlite.getStoragePath(), "part");
 }
 
-function getDbPath(): string {
-  return join(getOpenCodePath(), "opencode.db");
-}
-
-// ==================== SQLite 初始化 ====================
-
-async function initSqlite(): Promise<boolean> {
-  if (sqlJsInitialized) return db !== null;
-  
-  try {
-    const SQL = await initSqlJs();
-    const dbPath = getDbPath();
-    
-    if (existsSync(dbPath)) {
-      const fileBuffer = readFileSync(dbPath);
-      db = new SQL.Database(fileBuffer);
-      
-      // 启用 WAL 模式，允许并发读写
-      try {
-        db.run('PRAGMA journal_mode=WAL');
-        db.run('PRAGMA busy_timeout=5000');
-        db.run('PRAGMA synchronous=NORMAL');
-      } catch (e) {
-        log.warn("[storage] Failed to enable WAL mode:", e);
-      }
-      
-      sqlJsInitialized = true;
-      return true;
-    } else {
-      sqlJsInitialized = true;
-      return false;
-    }
-  } catch (error) {
-    log.error("[storage] Failed to initialize SQLite:", error);
-    sqlJsInitialized = true;
-    return false;
-  }
-}
+// ==================== SQLite 初始化 (由 sqlite-conn 管理) ====================
 
 // ==================== SQLite 查询函数 ====================
 
+interface SessionRow {
+  id: string;
+  project_id: string;
+  parent_id: string | null;
+  title: string;
+  directory: string;
+  time_created: number;
+  time_updated: number;
+}
+
+interface ProjectRow {
+  id: string;
+  name: string;
+  worktree: string;
+  time_created: number;
+  time_updated: number;
+}
+
 function querySessionsFromSqlite(): SessionMeta[] {
-  if (!db) return [];
+  const sessions: SessionMeta[] = [];
   
+  // 尝试从 session 表读取
   try {
-    // 尝试查询 sessions 表 - 需要先了解表结构
-    // 常见的表名可能是: sessions, projects, messages 等
-    const result = db.exec(`
-      SELECT name FROM sqlite_master 
-      WHERE type='table' AND name LIKE '%session%'
+    const rows = sqlite.queryAll<SessionRow>(`
+      SELECT id, project_id, parent_id, title, directory, time_created, time_updated
+      FROM session 
+      ORDER BY time_updated DESC 
+      LIMIT 100
     `);
     
-    if (result.length === 0 || result[0].values.length === 0) {
-      return [];
-    }
-    
-    // 尝试查询所有可能的表
-    const sessions: SessionMeta[] = [];
-    
-    // 尝试从 sessions 表读取
-    try {
-      const sessionResult = db.exec(`
-        SELECT id, project_id, parent_id, title, directory, time_created, time_updated
-        FROM session 
-        ORDER BY time_updated DESC 
-        LIMIT 100
-      `);
-      
-      if (sessionResult.length > 0 && sessionResult[0].values.length > 0) {
-        for (const row of sessionResult[0].values) {
-          const updatedAt = row[6] ? new Date(Number(row[6])) : new Date();
-          sessions.push({
-            id: String(row[0] || ''),
-            projectID: String(row[1] || ''),
-            parentID: row[2] ? String(row[2]) : undefined,
-            title: String(row[3] || 'Untitled Session'),
-            directory: String(row[4] || ''),
-            createdAt: row[5] ? new Date(Number(row[5])) : new Date(),
-            updatedAt,
-            status: computeSessionStatus(updatedAt),
-          });
-        }
-        return sessions;
+    if (rows.length > 0) {
+      for (const row of rows) {
+        const updatedAt = row.time_updated ? new Date(row.time_updated) : new Date();
+        sessions.push({
+          id: row.id || '',
+          projectID: row.project_id || '',
+          parentID: row.parent_id || undefined,
+          title: row.title || 'Untitled Session',
+          directory: row.directory || '',
+          createdAt: row.time_created ? new Date(row.time_created) : new Date(),
+          updatedAt,
+          status: computeSessionStatus(updatedAt),
+        });
       }
-    } catch (e) {
-      // sessions 表不存在或格式不同
-      log.debug("[storage] sessions table query failed, trying other tables");
+      return sessions;
     }
-    
-    // 尝试从 projects 表读取（一些版本可能没有 sessions 表）
-    try {
-      const projectResult = db.exec(`
-        SELECT id, name, worktree, time_created, time_updated
-        FROM project 
-        ORDER BY time_updated DESC 
-        LIMIT 100
-      `);
-      
-      if (projectResult.length > 0 && projectResult[0].values.length > 0) {
-        for (const row of projectResult[0].values) {
-          const updatedAt = row[4] ? new Date(Number(row[4])) : new Date();
-          sessions.push({
-            id: String(row[0] || ''),
-            projectID: String(row[0] || ''),
-            title: String(row[1] || 'Project'),
-            directory: String(row[2] || ''),
-            createdAt: row[3] ? new Date(Number(row[3])) : new Date(),
-            updatedAt,
-            status: computeSessionStatus(updatedAt),
-          });
-        }
-        return sessions;
-      }
-    } catch (e) {
-      log.debug("[storage] projects table query failed");
-    }
-    
-    return [];
-  } catch (error) {
-    log.error("[storage] Error querying SQLite:", error);
-    return [];
+  } catch (e) {
+    // session 表不存在或格式不同
+    log.debug("[storage] session table query failed, trying other tables");
   }
+  
+  // 尝试从 project 表读取（一些版本可能没有 session 表）
+  try {
+    const rows = sqlite.queryAll<ProjectRow>(`
+      SELECT id, name, worktree, time_created, time_updated
+      FROM project 
+      ORDER BY time_updated DESC 
+      LIMIT 100
+    `);
+    
+    if (rows.length > 0) {
+      for (const row of rows) {
+        const updatedAt = row.time_updated ? new Date(row.time_updated) : new Date();
+        sessions.push({
+          id: row.id || '',
+          projectID: row.id || '',
+          title: row.name || 'Project',
+          directory: row.worktree || '',
+          createdAt: row.time_created ? new Date(row.time_created) : new Date(),
+          updatedAt,
+          status: computeSessionStatus(updatedAt),
+        });
+      }
+      return sessions;
+    }
+  } catch (e) {
+    log.debug("[storage] project table query failed");
+  }
+  
+  return [];
+}
+
+interface MessageRow {
+  id: string;
+  session_id: string;
+  time_created: number;
+  time_updated: number;
+  data: string;
 }
 
 function queryMessagesFromSqlite(sessionID: string): MessageMeta[] {
-  if (!db) return [];
-  
   try {
-    const stmt = db.prepare(`
-      SELECT id, session_id, time_created, time_updated, data
-      FROM message 
-      WHERE session_id = ?
-      ORDER BY time_created ASC
-    `);
-    stmt.bind([sessionID]);
+    const rows = sqlite.queryAll<MessageRow>(
+      `SELECT id, session_id, time_created, time_updated, data
+       FROM message 
+       WHERE session_id = ?
+       ORDER BY time_created ASC`,
+      [sessionID]
+    );
     
     const messages: MessageMeta[] = [];
-    while (stmt.step()) {
-      const row = stmt.get();
-      let parsedData: any = null;
+    for (const row of rows) {
+      let parsedData: Record<string, unknown> | null = null;
       try { 
-        parsedData = row[4] ? JSON.parse(String(row[4])) : null; 
+        parsedData = row.data ? JSON.parse(row.data) : null; 
       } catch (e) {
         log.debug("[storage] Error parsing message data JSON:", e);
       }
@@ -250,15 +204,14 @@ function queryMessagesFromSqlite(sessionID: string): MessageMeta[] {
       const agent = parsedData?.agent ? String(parsedData.agent) : undefined;
       
       messages.push({
-        id: String(row[0] || ''),
-        sessionID: String(row[1] || ''),
+        id: row.id || '',
+        sessionID: row.session_id || '',
         role,
         agent,
-        createdAt: row[2] ? new Date(Number(row[2])) : new Date(),
+        createdAt: row.time_created ? new Date(row.time_created) : new Date(),
         data: parsedData,
       });
     }
-    stmt.free();
     return messages;
   } catch (error) {
     log.debug("[storage] Error querying messages from SQLite:", error);
@@ -266,32 +219,29 @@ function queryMessagesFromSqlite(sessionID: string): MessageMeta[] {
   }
 }
 
+interface PartRow {
+  id: string;
+  message_id: string;
+  session_id: string;
+  time_created: number;
+  data: string;
+}
+
 function queryPartsFromSqlite(sessionID: string): PartMeta[] {
-  if (!db) return [];
-  
   try {
-    // part 表只有: id, message_id, session_id, time_created, time_updated, data
-    // data 字段是 JSON，包含 type, tool, state 等
-    let stmt;
-    try {
-      stmt = db.prepare(`
-        SELECT id, message_id, session_id, time_created, data
-        FROM part 
-        WHERE session_id = ?
-        ORDER BY time_created ASC
-      `);
-      stmt.bind([sessionID]);
-    } catch {
-      // parts 表不存在
-      return [];
-    }
+    const rows = sqlite.queryAll<PartRow>(
+      `SELECT id, message_id, session_id, time_created, data
+       FROM part 
+       WHERE session_id = ?
+       ORDER BY time_created ASC`,
+      [sessionID]
+    );
     
     const parts: PartMeta[] = [];
-    while (stmt.step()) {
-      const row: any[] = stmt.get();
-      let parsedData: any = null;
+    for (const row of rows) {
+      let parsedData: Record<string, unknown> | null = null;
       try { 
-        parsedData = row[4] ? JSON.parse(String(row[4])) : null; 
+        parsedData = row.data ? JSON.parse(row.data) : null; 
       } catch (e) {
         log.debug("[storage] Error parsing part data JSON:", e);
       }
@@ -299,20 +249,19 @@ function queryPartsFromSqlite(sessionID: string): PartMeta[] {
       // 从 data JSON 中提取 type, tool, state
       const type = parsedData?.type ? String(parsedData.type) : undefined;
       const tool = parsedData?.tool ? String(parsedData.tool) : undefined;
-      const state = parsedData?.state ? parsedData.state : undefined;
+      const state = parsedData?.state ? String(parsedData.state) : undefined;
       
       parts.push({
-        id: String(row[0] || ''),
-        messageID: String(row[1] || ''),
-        sessionID: String(row[2] || ''),
+        id: row.id || '',
+        messageID: row.message_id || '',
+        sessionID: row.session_id || '',
         type,
         tool,
         state,
-        createdAt: row[3] ? new Date(Number(row[3])) : new Date(),
+        createdAt: row.time_created ? new Date(row.time_created) : new Date(),
         data: parsedData,
       });
     }
-    stmt.free();
     return parts;
   } catch (error) {
     log.debug("[storage] Error querying parts from SQLite:", error);
@@ -459,117 +408,39 @@ function dirname(path: string): string {
   return path.split(/[/\\]/).slice(0, -1).join("/");
 }
 
-// ==================== 存储检查 ====================
+// ==================== 存储检查 (委托给 sqlite-conn) ====================
 
 export function checkStorageExists(): boolean {
-  const storagePath = getStoragePath();
-  const dbPath = getDbPath();
-  return existsSync(storagePath) || existsSync(dbPath);
+  return sqlite.checkStorageExists();
 }
 
-export async function checkDbInitialized(): Promise<boolean> {
-  return await initSqlite();
+export function checkDbInitialized(): boolean {
+  return sqlite.isDbReady();
 }
 
-// 检查并重新加载数据库（如果文件有变化）
-export async function reloadDbIfChanged(): Promise<boolean> {
-  const dbPath = getDbPath();
-  
-  if (!existsSync(dbPath)) {
-    return false;
-  }
-  
-  try {
-    const stats = statSync(dbPath);
-    const currentMtime = stats.mtimeMs;
-    
-    // 如果文件修改时间变了，重新加载数据库
-    if (currentMtime !== lastDbFileMtime) {
-      
-      // 关闭旧连接
-      if (db) {
-        db.close();
-        db = null;
-      }
-      
-      // 重新初始化
-      const SQL = await initSqlJs();
-      const fileBuffer = readFileSync(dbPath);
-      db = new SQL.Database(fileBuffer);
-      
-      // 启用 WAL 模式，允许并发读写
-      try {
-        db.run('PRAGMA journal_mode=WAL');
-        db.run('PRAGMA busy_timeout=5000');
-        db.run('PRAGMA synchronous=NORMAL');
-      } catch (e) {
-        log.warn("[storage] Failed to enable WAL mode:", e);
-      }
-      
-      lastDbFileMtime = currentMtime;
-      
-      return true;
-    }
-    
-    return false;
-  } catch (error) {
-    log.warn(`[storage] Failed to reload database:`, error);
-    return false;
-  }
+// 检查并重新加载数据库（如果文件有变化）- 委托给 sqlite-conn
+export function reloadDbIfChanged(): boolean {
+  return sqlite.reloadDbIfChanged();
 }
 
-// 互斥锁：防止并发请求同时刷新数据库
-let isReloading = false;
-
-// 带互斥锁的数据库刷新函数
-async function ensureDbFresh(): Promise<void> {
-  if (isReloading) return;  // 已有请求在刷新，跳过
-  isReloading = true;
-  try {
-    await reloadDbIfChanged();
-  } finally {
-    isReloading = false;
-  }
+// 带互斥锁的数据库刷新函数 - 委托给 sqlite-conn
+function ensureDbFresh(): void {
+  sqlite.ensureDbFresh();
 }
 
-// 强制重新加载数据库
-export async function forceReloadDb(): Promise<boolean> {
-  const dbPath = getDbPath();
-  
-  if (!existsSync(dbPath)) {
-    log.warn(`[storage] Database file not found: ${dbPath}`);
-    return false;
-  }
-  
-  try {
-    
-    // 关闭旧连接
-    if (db) {
-      db.close();
-      db = null;
-    }
-    
-    sqlJsInitialized = false;
-    
-    // 重新初始化
-    await initSqlite();
-    
-    return true;
-  } catch (error) {
-    log.error(`[storage] Failed to force reload database:`, error);
-    return false;
-  }
+// 强制重新加载数据库 - 委托给 sqlite-conn
+export function forceReloadDb(): boolean {
+  return sqlite.forceReloadDb();
 }
 
 // ==================== 公开 API ====================
 
 // Get all sessions (SQLite 优先，回退到 JSON)
 export async function getAllSessions(): Promise<SessionMeta[]> {
-  await ensureDbFresh();
+  ensureDbFresh();
   
   // 先尝试 SQLite
-  await initSqlite();
-  if (db) {
+  if (sqlite.isDbReady()) {
     const sqliteSessions = querySessionsFromSqlite();
     if (sqliteSessions.length > 0) {
       return sqliteSessions;
@@ -588,11 +459,10 @@ export async function getAllSessions(): Promise<SessionMeta[]> {
 
 // Get session by ID
 export async function getSession(id: string): Promise<SessionMeta | null> {
-  await ensureDbFresh();
+  ensureDbFresh();
   
   // 先尝试 SQLite
-  await initSqlite();
-  if (db) {
+  if (sqlite.isDbReady()) {
     const sessions = querySessionsFromSqlite();
     const session = sessions.find(s => s.id === id);
     if (session) return session;
@@ -606,11 +476,10 @@ export async function getSession(id: string): Promise<SessionMeta | null> {
 
 // Get all messages for a session
 export async function getMessagesForSession(sessionID: string): Promise<MessageMeta[]> {
-  await ensureDbFresh();
+  ensureDbFresh();
   
   // 先尝试 SQLite
-  await initSqlite();
-  if (db) {
+  if (sqlite.isDbReady()) {
     const messages = queryMessagesFromSqlite(sessionID);
     if (messages.length > 0) {
       return messages;
@@ -634,11 +503,10 @@ export async function getMessagesForSession(sessionID: string): Promise<MessageM
 
 // Get all parts for a session
 export async function getPartsForSession(sessionID: string): Promise<PartMeta[]> {
-  await ensureDbFresh();
+  ensureDbFresh();
   
   // 先尝试 SQLite
-  await initSqlite();
-  if (db) {
+  if (sqlite.isDbReady()) {
     const parts = queryPartsFromSqlite(sessionID);
     if (parts.length > 0) {
       return parts;
@@ -837,17 +705,13 @@ export async function getSessionTree(sessionID: string): Promise<SessionMeta | n
 
 // Close database connection
 export function closeDb(): void {
-  if (db) {
-    db.close();
-    db = null;
-  }
-  sqlJsInitialized = false;
+  sqlite.closeSqlite();
 }
 
 // 获取存储路径信息（用于调试）
 export function getStorageInfo(): { storagePath: string; dbPath: string; storageExists: boolean; dbExists: boolean } {
-  const storagePath = getStoragePath();
-  const dbPath = getDbPath();
+  const storagePath = sqlite.getStoragePath();
+  const dbPath = sqlite.getDbPath();
   return {
     storagePath,
     dbPath,

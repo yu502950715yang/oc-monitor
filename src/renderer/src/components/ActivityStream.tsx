@@ -2,11 +2,12 @@ import { useState, useCallback, useMemo } from 'react'
 import { formatRelativeTime } from '@/utils/format'
 import { 
   Terminal, FileText, CheckSquare, ArrowRightCircle, 
-  XCircle, Brain, ChevronDown, ChevronRight, Activity
+  XCircle, Brain, ChevronDown, ChevronRight, Activity as ActivityIcon
 } from 'lucide-react'
 import { useConfig } from '@/hooks/useConfig'
 import { useApp } from '@/context/AppContext'
 import { useDashboard } from '@/hooks/useApi'
+import { ActivityStreamSkeleton } from './LoadingSkeleton'
 
 // Token信息接口
 export interface TokenInfo {
@@ -57,6 +58,7 @@ export interface Activity {
 
 interface ActivityStreamProps {
   activities: Activity[]
+  isLoading?: boolean  // 初始加载/手动刷新/会话切换时显示骨架屏
 }
 
 // 默认工具颜色映射 - 硬编码备用值
@@ -89,7 +91,7 @@ const typeIconMap = {
   reasoning: { label: '推理', color: 'text-[#79c0ff]', bg: 'bg-[#79c0ff]/10', Icon: Brain },
 }
 
-export default function ActivityStream({ activities }: ActivityStreamProps) {
+export default function ActivityStream({ activities, isLoading }: ActivityStreamProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const { data: config } = useConfig()
   const { liveSummary, selectedSessionId } = useApp()
@@ -191,7 +193,10 @@ export default function ActivityStream({ activities }: ActivityStreamProps) {
 
       {/* 活动列表 */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {activities.length === 0 ? (
+        {isLoading ? (
+          // 初始加载/会话切换/手动刷新时显示骨架屏
+          <ActivityStreamSkeleton count={5} />
+        ) : activities.length === 0 ? (
           <div className="text-center text-[var(--color-text-secondary)] text-sm py-8">
             暂无活动
           </div>
@@ -206,7 +211,7 @@ export default function ActivityStream({ activities }: ActivityStreamProps) {
               }
             }
             
-            const TypeIcon = typeInfo.Icon || Activity
+            const TypeIcon = typeInfo.Icon || ActivityIcon
             
             // 格式化耗时
             const formatDuration = (ms?: number) => {

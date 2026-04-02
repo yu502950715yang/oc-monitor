@@ -21,7 +21,7 @@ Electron 主进程后端，提供 HTTP API 服务和数据解析，监听 OpenCo
 ## CONVENTIONS
 
 - **后端框架**: Hono (轻量 HTTP 框架)
-- **数据库**: sql.js 内存 SQLite，文件变化自动重载
+- **数据库**: better-sqlite3 原生 SQLite，文件变化自动重载
 - **数据源优先级**: SQLite > JSON 文件
 - **存储路径**: `~/.local/share/opencode/` (Windows: `%USERPROFILE%\.local\share\opencode`)
 - **会话状态计算**: 基于 updatedAt (1h 内=运行中, 1-24h=等待中, >24h=完成)

@@ -1,31 +1,33 @@
+/**
+ * Type declaration for sql.js (still used by data-loader)
+ * Can be removed once data-loader is also migrated to better-sqlite3
+ */
+
 declare module "sql.js" {
   export interface Database {
-    run(sql: string, params?: any[]): void;
+    run(sql: string, params?: unknown[]): void;
     exec(sql: string): QueryExecResult[];
-    each(sql: string, callback: (row: any) => void, done: () => void): void;
     prepare(sql: string): Statement;
-    export(): Uint8Array;
     close(): void;
+  }
+
+  export interface Statement {
+    bind(params?: unknown[]): boolean;
+    step(): boolean;
+    get(): unknown[];
+    free(): void;
   }
 
   export interface QueryExecResult {
     columns: string[];
-    values: any[][];
-  }
-
-  export interface Statement {
-    bind(params?: any[]): boolean;
-    step(): boolean;
-    get(): any[];
-    getAsObject(): Record<string, any>;
-    run(params?: any[]): void;
-    reset(): void;
-    free(): boolean;
+    values: unknown[][];
   }
 
   export interface SqlJsStatic {
-    Database: new (data?: ArrayLike<number> | Buffer | null) => Database;
+    Database: new (data?: ArrayLike<number>) => Database;
   }
 
-  export default function initSqlJs(config?: any): Promise<SqlJsStatic>;
+  export default function initSqlJs(config?: {
+    locateFile?: (file: string) => string;
+  }): Promise<SqlJsStatic>;
 }
