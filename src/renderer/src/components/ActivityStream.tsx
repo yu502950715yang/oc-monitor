@@ -6,7 +6,6 @@ import {
 } from 'lucide-react'
 import { useConfig } from '@/hooks/useConfig'
 import { useApp } from '@/context/AppContext'
-import { useDashboard } from '@/hooks/useApi'
 import { ActivityStreamSkeleton } from './LoadingSkeleton'
 
 // Token信息接口
@@ -94,18 +93,7 @@ const typeIconMap = {
 export default function ActivityStream({ activities, isLoading }: ActivityStreamProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const { data: config } = useConfig()
-  const { liveSummary, selectedSessionId } = useApp()
-  const { data: dashboardData } = useDashboard(selectedSessionId)
-
-  // 计算工具调用总数、错误数、成功率
-  const toolStatsSummary = useMemo(() => {
-    if (!dashboardData?.toolStats?.length) return null
-    const stats = dashboardData.toolStats
-    const totalCalls = stats.reduce((sum, s) => sum + s.total, 0)
-    const totalErrors = stats.reduce((sum, s) => sum + s.errors, 0)
-    const successRate = totalCalls > 0 ? Math.round(((totalCalls - totalErrors) / totalCalls) * 100) : 0
-    return { totalCalls, totalErrors, successRate }
-  }, [dashboardData])
+  const { liveSummary } = useApp()
 
   // 使用 useMemo 合并配置颜色与默认颜色
   const toolTypeColors = useMemo(() => {
@@ -152,44 +140,22 @@ export default function ActivityStream({ activities, isLoading }: ActivityStream
       {/* 状态栏 */}
       {liveSummary && (
         <div className="px-4 py-2 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] flex items-center gap-4 flex-shrink-0">
-          <span className="text-xs text-[var(--color-text-secondary)]">
+          {/* 项目 */}
+          <span className="text-sm text-[var(--color-text-secondary)]">
             项目: <span className="text-[var(--color-text-primary)]">{liveSummary.projectName || '-'}</span>
           </span>
-          <span className="text-xs text-[var(--color-text-secondary)]">
-            成本: <span className="text-[var(--color-warning)]">{liveSummary.currency}{liveSummary.totalCost.toFixed(2)}</span>
+          {/* 成本 */}
+          <span className="text-sm text-[var(--color-text-secondary)]">
+            成本: <span className="text-[var(--color-warning)] font-medium">{liveSummary.currency}{liveSummary.totalCost.toFixed(2)}</span>
           </span>
-          <span className="text-xs text-[var(--color-text-secondary)]">
-            速度: <span className="text-[var(--color-info)]">{liveSummary.outputSpeed} tok/s</span>
+          {/* 速度 */}
+          <span className="text-sm text-[var(--color-text-secondary)]">
+            速度: <span className="text-[var(--color-info)] font-medium">{liveSummary.outputSpeed} tokens/s</span>
           </span>
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <span className="text-xs text-[var(--color-text-secondary)] whitespace-nowrap">时长:</span>
-            <div className="flex-1 h-1.5 bg-[var(--color-bg-tertiary)] rounded-full overflow-hidden min-w-[60px]">
-              <div 
-                className="h-full bg-[var(--color-primary)] rounded-full transition-all duration-300"
-                style={{ width: `${Math.min(liveSummary.durationProgress, 100)}%` }}
-              />
-            </div>
-            <span className="text-xs text-[var(--color-text-muted)] whitespace-nowrap">
-              {Math.round(liveSummary.durationProgress)}%
-            </span>
-          </div>
         </div>
       )}
 
-      {/* 工具统计栏 */}
-      {toolStatsSummary && (
-        <div className="px-4 py-2 border-b border-[var(--color-border)] bg-[var(--color-bg-secondary)] flex items-center gap-6 flex-shrink-0">
-          <span className="text-xs text-[var(--color-text-secondary)]">
-            工具: <span className="text-[var(--color-text-primary)]">{toolStatsSummary.totalCalls}</span>
-          </span>
-          <span className="text-xs text-[var(--color-text-secondary)]">
-            错误: <span className="text-[var(--color-error)]">{toolStatsSummary.totalErrors}</span>
-          </span>
-          <span className="text-xs text-[var(--color-text-secondary)]">
-            成功率: <span className={toolStatsSummary.successRate >= 90 ? 'text-[var(--color-success)]' : toolStatsSummary.successRate >= 70 ? 'text-[var(--color-warning)]' : 'text-[var(--color-error)]'}>{toolStatsSummary.successRate}%</span>
-          </span>
-        </div>
-      )}
+      
 
       {/* 活动列表 */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -212,14 +178,6 @@ export default function ActivityStream({ activities, isLoading }: ActivityStream
             }
             
             const TypeIcon = typeInfo.Icon || ActivityIcon
-            
-            // 格式化耗时
-            const formatDuration = (ms?: number) => {
-              if (!ms) return null
-              if (ms < 1000) return `${ms}ms`
-              if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
-              return `${Math.floor(ms / 60000)}m ${Math.round((ms % 60000) / 1000)}s`
-            }
             
             // 判断是否可展开
             const canExpand = activity.input || activity.output || activity.reasoningContent
@@ -278,10 +236,7 @@ export default function ActivityStream({ activities, isLoading }: ActivityStream
                       </span>
                     )}
                   </div>
-                  <span className="text-xs text-[var(--color-text-secondary)] flex items-center gap-1">
-                    {formatDuration(activity.duration) && (
-                      <span className="text-[var(--color-warning)]">{formatDuration(activity.duration)}</span>
-                    )}
+                  <span className="text-xs text-[var(--color-text-secondary)]">
                     {formatRelativeTime(activity.timestamp)}
                     {canExpand && (
                       <span className="ml-1 transition-transform duration-[var(--transition-base)]">
@@ -313,7 +268,6 @@ export default function ActivityStream({ activities, isLoading }: ActivityStream
                       {activity.agent && <div>智能体: {activity.agent}</div>}
                       {activity.subagentType && <div>子智能体: {activity.subagentType}</div>}
                       {activity.messageId && <div>消息ID: {activity.messageId}</div>}
-                      {activity.duration && <div>耗时: {formatDuration(activity.duration)}</div>}
                     </div>
                   )}
                   {activity.input && (
