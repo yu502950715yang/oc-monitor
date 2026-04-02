@@ -3,14 +3,14 @@ import { useApp } from '../context/AppContext'
 import ActivityTreeTabs, { type ViewMode } from './ActivityTreeTabs'
 import ErrorBoundary from './ErrorBoundary'
 
-// 导入 4 个视图组件
+// 导入视图组件
 import SessionTreeView from './views/SessionTreeView'
 import AgentTreeView from './views/AgentTreeView'
 import TaskFlowView from './views/TaskFlowView'
 import ToolChainView from './views/ToolChainView'
 
 // 导入类型定义和 hooks
-import { useSessionTree } from '../hooks/useApi'
+import { useSessionTree, useAgentTree } from '../hooks/useApi'
 import type { Activity } from './ActivityStream'
 import type { PartMeta, PlanProgress } from './__tests__/fixtures/mockActivityData'
 
@@ -36,6 +36,31 @@ export default function ActivityTree({ sessions }: ActivityTreeProps) {
 
   // 使用 useSessionTree hook 获取会话树数据
   const { data: sessionTree } = useSessionTree(selectedSessionId)
+
+  // 使用 useAgentTree hook 获取智能体树数据
+  const { data: agentTree } = useAgentTree(selectedSessionId)
+
+  // 将 AgentTreeResponse 转换为 PartMeta[] 格式供 AgentTreeView 使用
+  const agentData = useMemo((): PartMeta[] => {
+    if (!agentTree || !agentTree.nodes) return []
+    return agentTree.nodes.map(node => ({
+      id: node.id,
+      messageID: node.messageID,
+      sessionID: agentTree.sessionId,
+      type: 'agent', // AgentTreeView 用 agentType 字段来区分
+      tool: undefined,
+      subagentType: node.subagentType,
+      action: node.action,
+      status: node.status,
+      timeStart: node.timeStart,
+      timeEnd: node.timeEnd,
+      error: undefined,
+      data: undefined,
+      input: undefined,
+      output: undefined,
+      createdAt: node.createdAt,
+    }))
+  }, [agentTree])
 
   // 手动刷新活动树
   const handleRefresh = useCallback(() => {
@@ -71,11 +96,6 @@ export default function ActivityTree({ sessions }: ActivityTreeProps) {
       }))
   }, [activities])
 
-  // 提取智能体调用数据（有 subagentType 的工具调用）
-  const agentParts = useMemo((): PartMeta[] => {
-    return toolParts.filter(part => part.subagentType)
-  }, [toolParts])
-
   // 将 plans 转换为 PlanProgress 格式
   const planProgress = useMemo((): PlanProgress | null => {
     if (!plans || plans.length === 0) return null
@@ -92,20 +112,9 @@ export default function ActivityTree({ sessions }: ActivityTreeProps) {
   const renderView = () => {
     switch (view) {
       case 'session':
-        return (
-          <SessionTreeView
-            sessionTree={sessionTree}
-            showRefresh
-            onRefresh={handleRefresh}
-          />
-        )
+        return <SessionTreeView sessionTree={sessionTree} />
       case 'agent':
-        return (
-          <AgentTreeView
-            data={agentParts}
-            emptyText="暂无智能体调用记录"
-          />
-        )
+        return <AgentTreeView data={agentData} />
       case 'task':
         return (
           <TaskFlowView

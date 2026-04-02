@@ -590,3 +590,54 @@ export function useMcpStats(id: string | null) {
 
   return { ...state, refetch: fetchMcpStats }
 }
+
+// Agent Tree API response types
+export interface AgentTreeNode {
+  id: string
+  messageID: string
+  subagentType: string
+  agentMode: 'main' | 'subagent'
+  action: string
+  status: string
+  timeStart?: number
+  timeEnd?: number
+  createdAt: string
+  parentId: string | null
+  level: number
+}
+
+export interface AgentTreeResponse {
+  sessionId: string
+  nodes: AgentTreeNode[]
+  total: number
+}
+
+// Hook for fetching agent tree
+export function useAgentTree(id: string | null) {
+  const [state, setState] = useState<ApiState<AgentTreeResponse | null>>({
+    data: null,
+    loading: true,
+    error: null,
+  })
+
+  const fetchAgentTree = useCallback(async () => {
+    if (!id) {
+      setState({ data: null, loading: false, error: null })
+      return
+    }
+    setState(prev => ({ ...prev, loading: true, error: null }))
+    try {
+      const result = await window.electronAPI.api.getAgentTree(id)
+      setState({ data: result, loading: false, error: null })
+    } catch (err) {
+      setState({ data: null, loading: false, error: err as Error })
+    }
+  }, [id])
+
+  useEffect(() => {
+    fetchAgentTree()
+  }, [fetchAgentTree])
+
+  return { ...state, refetch: fetchAgentTree }
+}
+

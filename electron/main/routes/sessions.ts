@@ -12,6 +12,7 @@ import {
   type SessionMeta,
 } from "../services/storage/parser";
 import { formatCurrentAction } from "../logic/activityLogic";
+import { agentRegistry } from "../services/agentRegistry";
 import log from "electron-log";
 import { config } from "../config";
 
@@ -917,7 +918,7 @@ export function registerSessionRoutes(app: Hono) {
     if (!checkStorageExists()) {
       return c.json(
         {
-          error: "SESSION_NOT_FOUND",
+          error: "STORAGE_NOT_FOUND",
           message: "OpenCode storage directory does not exist.",
         },
         404
@@ -972,6 +973,268 @@ export function registerSessionRoutes(app: Hono) {
     return c.json({
       sessions: sessionList,
       total: sessions.length,
+    });
+  });
+
+  // Get agent tree for a session (智能体树)
+  app.get("/api/sessions/:id/agent-tree", async (c) => {
+    const sessionID = c.req.param("id");
+
+    if (!checkStorageExists()) {
+      return c.json({ 
+        error: "STORAGE_NOT_FOUND", 
+        sessionId: sessionID, 
+        nodes: [], 
+        total: 0 
+      }, 404);
+    }
+
+    const session = await getSession(sessionID);
+    if (!session) {
+      return c.json({ 
+        error: "SESSION_NOT_FOUND", 
+        sessionId: sessionID, 
+        nodes: [], 
+        total: 0 
+      }, 404);
+    }
+
+    const parts = await getPartsForSession(sessionID);
+
+    // 过滤有 subagentType 的工具调用
+    const agentParts = parts.filter(p => {
+      if (p.type !== "tool") return false;
+      const state = p.state as Record<string, unknown> | undefined;
+      if (!state) return false;
+      const input = state.input;
+      if (!input) return false;
+      if (typeof input === "object") return !!(input as Record<string, unknown>).subagent_type;
+      if (typeof input === "string") {
+        try { return !!JSON.parse(input).subagent_type; } catch { return false; }
+      }
+      return false;
+    });
+
+    // 构建节点
+    const agentNodes = agentParts.map((p) => {
+      const state = p.state as Record<string, unknown> | undefined;
+      let input = state?.input;
+      let subagentType = "";
+
+      if (typeof input === "string") {
+        try { subagentType = JSON.parse(input).subagent_type || ""; } catch { subagentType = ""; }
+      } else if (typeof input === "object" && input !== null) {
+        subagentType = (input as Record<string, unknown>).subagent_type as string || "";
+      }
+
+      const timeObj = state?.time as Record<string, number> | undefined;
+      const agentMode = agentRegistry.isSubAgent(subagentType) ? "subagent" : "main";
+
+      return {
+        id: p.id,
+        messageID: p.messageID,
+        subagentType,
+        agentMode,
+        action: formatCurrentAction(p) || "",
+        status: state?.status as string || "",
+        timeStart: timeObj?.start,
+        timeEnd: timeObj?.end,
+        createdAt: p.createdAt.toISOString(),
+        parentId: null as string | null,
+        level: 0,
+      };
+    });
+
+    // 按时间排序并构建层级
+    const sortedNodes = agentNodes.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    const mainAgents = sortedNodes.filter(n => n.agentMode === "main");
+    const subAgents = sortedNodes.filter(n => n.agentMode === "subagent");
+
+    for (const subAgent of subAgents) {
+      const parent = mainAgents.find(m => new Date(m.createdAt).getTime() < new Date(subAgent.createdAt).getTime());
+      if (parent) { subAgent.parentId = parent.id; subAgent.level = 1; }
+    }
+
+    return c.json({ 
+      sessionId: sessionID, 
+      nodes: [...mainAgents, ...subAgents], 
+      total: agentNodes.length 
+    });
+  });
+
+  // Unified tree endpoint - returns all sessions, agents, and tools in a tree structure
+  // 可以通过 sessionId 查询参数指定会话，不指定则返回所有会话
+  app.get("/api/unified-tree", async (c) => {
+    const sessionId = c.req.query("sessionId");
+    
+    if (!checkStorageExists()) {
+      return c.json({
+        error: "STORAGE_NOT_FOUND",
+        message: "OpenCode storage directory does not exist.",
+        nodes: [],
+      });
+    }
+
+    const allNodes: Array<{
+      id: string;
+      type: "session" | "agent" | "tool";
+      parentId: string | null;
+      level: number;
+      status: string;
+      // Session-specific
+      title?: string;
+      projectID?: string;
+      // Agent-specific
+      subagentType?: string;
+      action?: string;
+      // Tool-specific
+      toolName?: string;
+    }> = [];
+
+    // Get all sessions
+    const allSessions = await getAllSessions();
+
+    // Determine which sessions to process
+    let sessionsToProcess: typeof allSessions = [];
+    
+    if (sessionId) {
+      // 如果指定了 sessionId，只处理该会话及其子会话
+      const targetSession = allSessions.find(s => s.id === sessionId);
+      if (targetSession) {
+        sessionsToProcess = [targetSession];
+        // 递归获取所有子会话
+        const getAllChildren = (parentId: string): SessionMeta[] => {
+          const children = allSessions.filter(s => s.parentID === parentId);
+          return children.concat(children.flatMap(c => getAllChildren(c.id)));
+        };
+        const childSessions = getAllChildren(sessionId);
+        sessionsToProcess = [targetSession, ...childSessions];
+      }
+    } else {
+      // 如果没有指定 sessionId，处理所有根会话
+      sessionsToProcess = allSessions.filter((s) => !s.parentID);
+    }
+
+    // Recursive function to process sessions and their children
+    async function processSession(session: typeof allSessions[0], level: number, parentId: string | null) {
+      // Add session node
+      allNodes.push({
+        id: session.id,
+        type: "session",
+        parentId,
+        level,
+        status: session.status,
+        title: session.title,
+        projectID: session.projectID,
+      });
+
+      // Get parts (tool calls) for this session
+      const parts = await getPartsForSession(session.id);
+
+      // Separate agent calls (subagent_type) and regular tool calls
+      const agentParts: typeof parts = [];
+      const toolParts: typeof parts = [];
+
+      for (const part of parts) {
+        if (part.type !== "tool") continue;
+        const state = part.state as Record<string, unknown> | undefined;
+        if (!state) continue;
+        const input = state.input;
+        let hasSubagentType = false;
+
+        if (typeof input === "object" && input !== null) {
+          hasSubagentType = !!(input as Record<string, unknown>).subagent_type;
+        } else if (typeof input === "string") {
+          try {
+            hasSubagentType = !!JSON.parse(input).subagent_type;
+          } catch {
+            hasSubagentType = false;
+          }
+        }
+
+        if (hasSubagentType) {
+          agentParts.push(part);
+        } else {
+          toolParts.push(part);
+        }
+      }
+
+      // Process agent nodes
+      for (const agentPart of agentParts) {
+        const state = agentPart.state as Record<string, unknown> | undefined;
+        let input = state?.input;
+        let subagentType = "";
+        let action = "";
+
+        if (typeof input === "string") {
+          try {
+            const parsed = JSON.parse(input);
+            subagentType = parsed.subagent_type || "";
+          } catch {
+            subagentType = "";
+          }
+        } else if (typeof input === "object" && input !== null) {
+          subagentType = (input as Record<string, unknown>).subagent_type as string || "";
+        }
+
+        const formattedAction = formatCurrentAction(agentPart);
+        action = formattedAction || state?.action as string || "";
+
+        allNodes.push({
+          id: agentPart.id,
+          type: "agent",
+          parentId: session.id,
+          level: level + 1,
+          status: (state?.status as string) || "",
+          subagentType,
+          action,
+        });
+      }
+
+      // Process tool nodes - attach to the last agent or session
+      let lastAgentId: string | null = null;
+      for (const toolPart of toolParts) {
+        const state = toolPart.state as Record<string, unknown> | undefined;
+        const toolName = (state?.input as Record<string, unknown>)?.name as string || toolPart.tool || "";
+
+        // Only add if it has a meaningful tool name
+        if (toolName) {
+          allNodes.push({
+            id: toolPart.id,
+            type: "tool",
+            parentId: lastAgentId || session.id,
+            level: level + 2,
+            status: (state?.status as string) || "",
+            toolName,
+          });
+        }
+      }
+
+      // Update last agent ID for subsequent tools
+      if (agentParts.length > 0) {
+        const lastAgent = agentParts[agentParts.length - 1];
+        lastAgentId = lastAgent.id;
+      }
+
+      // Recursively process child sessions
+      const children = allSessions.filter((s) => s.parentID === session.id);
+      for (const child of children) {
+        await processSession(child, level + 1, session.id);
+      }
+    }
+
+    // Process selected sessions
+    for (const session of sessionsToProcess) {
+      // 判断是否是根会话（没有父会话）
+      const isRoot = !session.parentID || (sessionId && session.id === sessionId);
+      const parentId = isRoot ? null : (session.parentID || null);
+      await processSession(session, isRoot ? 0 : 1, parentId);
+    }
+
+    return c.json({
+      nodes: allNodes,
+      total: allNodes.length,
+      sessionCount: sessionsToProcess.length,
     });
   });
 }

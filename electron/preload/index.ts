@@ -39,6 +39,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
 getTokenHistory: (id: string) => ipcRenderer.invoke("api:fetch", "/api/sessions/"+id+"/token-history"),
       getErrorLog: (id: string) => ipcRenderer.invoke("api:fetch", "/api/sessions/"+id+"/error-log"),
       getMcpStats: (id: string) => ipcRenderer.invoke('api:fetch', `/api/sessions/${id}/mcp-stats`),
+      getAgentTree: (id: string) => ipcRenderer.invoke('api:fetch', `/api/sessions/${id}/agent-tree`),
+      getUnifiedTree: (id: string) => ipcRenderer.invoke('api:fetch', `/api/unified-tree?sessionId=${id}`),
       getPlan: (projectPath?: string) => {
         const url = projectPath ? `/api/plan?projectPath=${encodeURIComponent(projectPath)}` : '/api/plan'
         return ipcRenderer.invoke('api:fetch', url)
@@ -74,6 +76,8 @@ declare global {
         getTokenHistory: (id: string) => Promise<any>
         getErrorLog: (id: string) => Promise<any>
         getMcpStats: (id: string) => Promise<any>
+        getAgentTree: (id: string) => Promise<any>
+        getUnifiedTree: (id: string) => Promise<any>
         getPlan: () => Promise<any>
         getConfig: () => Promise<any>
         getMcpServices: () => Promise<any>

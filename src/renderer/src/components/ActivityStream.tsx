@@ -192,8 +192,8 @@ export default function ActivityStream({ activities, isLoading }: ActivityStream
                 className={`p-3 rounded-lg ${typeInfo.bg} border border-[var(--color-border)] cursor-pointer hover:opacity-80 transition-all duration-[var(--transition-base)]`}
                 onClick={() => toggleExpand(activity.id)}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center mb-2 gap-2">
+                  <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1">
                     <TypeIcon className={`w-3.5 h-3.5 ${typeInfo.color}`} />
                     <span className={`text-xs font-medium ${typeInfo.color}`}>
                       {typeInfo.label}
@@ -239,10 +239,10 @@ export default function ActivityStream({ activities, isLoading }: ActivityStream
                       </span>
                     )}
                   </div>
-                  <span className="text-xs text-[var(--color-text-secondary)]">
+                  <span className="text-xs text-[var(--color-text-secondary)] flex-shrink-0 whitespace-nowrap">
                     {formatRelativeTime(activity.timestamp)}
                     {canExpand && (
-                      <span className="ml-1 transition-transform duration-[var(--transition-base)]">
+                      <span className="ml-1 transition-transform duration-[var(--transition-base)] inline-flex">
                         {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
                       </span>
                     )}
