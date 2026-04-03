@@ -21,7 +21,7 @@ export const config = {
   // ====================
   server: {
     /** HTTP 服务器端口 */
-    port: 50234,
+    port: 3333,
     
     /** 服务器主机地址（仅支持本机） */
     host: 'localhost',
